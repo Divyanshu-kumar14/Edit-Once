@@ -1,0 +1,30 @@
+{
+  "tiktok": {
+    "output": { "width": 1080, "height": 1920 },
+    "safe_zone": { "bottom_margin": 0.18, "right_margin": 0.15, "top_margin": 0.05 },
+    "caption_style": { "font_size": 64, "outline": 3, "shadow": 1, "max_lines": 3, "max_chars_per_line": 18 },
+    "duration_limit_s": 600,
+    "min_resolution": [720, 1280]
+  },
+  "reels": {
+    "output": { "width": 1080, "height": 1920 },
+    "safe_zone": { "bottom_margin": 0.30, "right_margin": 0.15, "top_margin": 0.05 },
+    "caption_style": { "font_size": 64, "outline": 3, "shadow": 1, "max_lines": 3, "max_chars_per_line": 18 },
+    "duration_limit_s": 180,
+    "min_resolution": [720, 1280]
+  },
+  "shorts": {
+    "output": { "width": 1080, "height": 1920 },
+    "safe_zone": { "bottom_margin": 0.20, "right_margin": 0.25, "top_margin": 0.05 },
+    "caption_style": { "font_size": 64, "outline": 3, "shadow": 1, "max_lines": 3, "max_chars_per_line": 18 },
+    "duration_limit_s": 180,
+    "min_resolution": [720, 1280]
+  },
+  "x": {
+    "output": { "width": 1080, "height": 1920 },
+    "safe_zone": { "bottom_margin": 0.15, "right_margin": 0.10, "top_margin": 0.05 },
+    "caption_style": { "font_size": 64, "outline": 3, "shadow": 1, "max_lines": 3, "max_chars_per_line": 18 },
+    "duration_limit_s": 140,
+    "min_resolution": [720, 1280]
+  }
+}
