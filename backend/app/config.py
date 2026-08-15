@@ -17,6 +17,7 @@ APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("EDITONCE_DATA_DIR", BACKEND_DIR / "data"))
 JOBS_DIR = DATA_DIR / "jobs"
 FONTS_DIR = BACKEND_DIR / "fonts"
+ASSETS_DIR = BACKEND_DIR / "assets"  # bundled model files (face cascade)
 PLATFORMS_JSON = BACKEND_DIR / "platforms.json"
 FRONTEND_DIST = APP_DIR / "static"  # vite build output (served at /)
 

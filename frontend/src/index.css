@@ -228,6 +228,66 @@ html, body {
   transition: filter 0.18s ease, transform 0.18s ease;
 }
 .still:hover { filter: brightness(1.1); }
+/* FR-4.3: draggable crop anchor on the preview. */
+.still-frame.draggable { cursor: crosshair; touch-action: none; user-select: none; }
+/* Keyboard users can nudge the anchor too — show focus on the still. */
+.still:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.anchor-marker {
+  position: absolute;
+  width: 20px; height: 20px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 0 10px rgba(0, 0, 0, 0.4);
+  /* Micro-interaction: pop in on placement so the new anchor is noticeable. */
+  animation: marker-in 0.15s ease;
+}
+@keyframes marker-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+}
+.anchor-marker::after {
+  content: "";
+  position: absolute; inset: 0;
+  margin: auto;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.anchor-marker.static { border-color: var(--accent); }
+.anchor-marker.static::after { background: #fff; }
+
+/* FR-3.3: crop / blur-pad fit toggle. */
+.fit-row { display: flex; align-items: center; gap: 12px; }
+.fit-hint { margin: 0; font-size: 12px; }
+.fit-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.fit-toggle button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
+  /* Micro-interaction: smooth hover/active state instead of a hard snap. */
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.fit-toggle button:hover { color: var(--text); }
+.fit-toggle button.active {
+  color: #052e1f;
+  background: var(--accent);
+}
+
+/* Re-render in flight: progress replaces the still + checklist. */
+.card-render { display: flex; flex-direction: column; gap: 12px; }
+.card-render .still-skeleton { position: static; }
 .overlay {
   position: absolute; inset: 0;
   width: 100%; height: 100%;

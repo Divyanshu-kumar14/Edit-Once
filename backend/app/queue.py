@@ -12,9 +12,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import config
-from .models import InputInfo, JobState, VersionState
-from .pipeline import rules
-from .pipeline.probe import ProbeError, probe
+from .models import InputInfo, JobState, SpecInfo, VersionState
+from .pipeline import analyzer, ass, renderer, rules, stills, verifier
+from .pipeline.probe import MediaInfo, ProbeError, probe
 
 
 def _platform_ids() -> list[str]:
@@ -34,6 +34,13 @@ class JobManager:
         # per poll was wasteful. Disk stays the source of truth (restarts),
         # the cache makes get() an O(1) dict hit after the first load.
         self._cache: dict[str, JobState] = {}
+        # Memoized per-job analysis (probe + SRT parse + scene/face anchors).
+        # Re-renders (FR-4.3) call _prepare(); without this cache every drag
+        # or fit toggle would re-decode the WHOLE video — Haar on every 2 s
+        # sample, ~0.5 s/frame on 1080p — even though the inputs (in.mp4,
+        # in.srt) are immutable once the job is created. Keyed by job_id;
+        # entries are tiny (<a few KB), jobs are never deleted in this app.
+        self._analysis_cache: dict[str, tuple[MediaInfo, list, tuple[float, float] | None]] = {}
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, name="job-worker", daemon=True)
 
@@ -41,7 +48,12 @@ class JobManager:
     def start(self) -> None:
         self._jobs_dir.mkdir(parents=True, exist_ok=True)
         if self._thread.is_alive():
-            return  # already running (tests may re-enter lifespan)
+            # A previous stop() may still be draining the last render. Wait
+            # (bounded) for it to exit so a fresh worker can spawn — tests
+            # re-enter the lifespan and would otherwise lose their worker.
+            self._thread.join(timeout=10)
+            if self._thread.is_alive():
+                return  # long render in flight; it will drain queued work
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, name="job-worker", daemon=True)
         self._thread.start()
@@ -74,7 +86,42 @@ class JobManager:
             },
         )
         self._persist(state)
-        self._queue.put(job_id)
+        self._queue.put(("job", job_id))
+        return state
+
+    def update_version_options(
+        self,
+        job_id: str,
+        platform: str,
+        fit: str,
+        anchor: tuple[float, float] | None,
+    ) -> JobState | None:
+        """Apply per-version options and re-render ONLY that platform (FR-4.3).
+
+        The other three versions are untouched — re-renders must never
+        invalidate work the user already approved.
+        """
+        state = self._load(job_id)
+        if state is None or platform not in state.versions:
+            return None
+        version = state.versions[platform]
+        version.fit = fit
+        # Clamp to 0..1: drag coordinates can drift a pixel outside.
+        if anchor is not None:
+            anchor = (min(1.0, max(0.0, anchor[0])), min(1.0, max(0.0, anchor[1])))
+        version.anchor_override = anchor
+        # Clear results BEFORE flipping the status: readers deep-copy the
+        # live state non-atomically, so flipping first would let a poll pair
+        # status="rendering" with stale checks/downloads from the old render.
+        version.error = None
+        version.checks = []
+        version.stills = []
+        version.download_url = None  # stale until the re-render finishes
+        version.spec = None
+        version.status = "rendering"
+        version.progress = 0
+        self._persist(state)
+        self._queue.put(("render", job_id, platform))
         return state
 
     def get(self, job_id: str) -> JobState | None:
@@ -118,19 +165,34 @@ class JobManager:
     def _run(self) -> None:
         while not self._stop.is_set():
             try:
-                job_id = self._queue.get(timeout=0.5)
+                msg = self._queue.get(timeout=0.5)
             except queue.Empty:
                 continue
-            if job_id == "__stop__":
-                break
-            try:
-                self._run_job(job_id)
-            except Exception as exc:  # whole-job failure (FR-2.4)
-                state = self._load(job_id)
-                if state is not None:
-                    state.status = "failed"
-                    state.error = str(exc)[:500]
-                    self._persist(state)
+            if msg == "__stop__":
+                if self._stop.is_set():
+                    break
+                continue  # stale sentinel from a previous lifecycle — drain it
+            if msg[0] == "job":
+                try:
+                    self._run_job(msg[1])
+                except Exception as exc:  # whole-job failure (FR-2.4)
+                    state = self._load(msg[1])
+                    if state is not None:
+                        state.status = "failed"
+                        state.error = str(exc)[:500]
+                        self._persist(state)
+            elif msg[0] == "render":
+                # Single-platform re-render (FR-4.3) — failure stays local.
+                _, job_id, platform = msg
+                try:
+                    self._render_one(job_id, platform)
+                except Exception as exc:
+                    state = self._load(job_id)
+                    if state is not None and platform in state.versions:
+                        version = state.versions[platform]
+                        version.status = "failed"
+                        version.error = str(exc)[:500]
+                        self._persist(state)
 
     def _run_job(self, job_id: str) -> None:
         # _load (not get): the worker must mutate the LIVE object so cache +
@@ -139,12 +201,14 @@ class JobManager:
         if state is None:
             return
 
-        # --- analyze: probe input ---
+        # --- analyze: probe input + SRT + scene/face anchors ---
+        # _prepare() is memoized per job, so this initial pass fills the
+        # cache that later FR-4.3 re-renders hit — one analysis per job.
         state.status = "analyzing"
         self._persist(state)
         job_dir = self.job_path(job_id)
         try:
-            info = probe(job_dir / "in.mp4")
+            info, cues, face_anchor = self._prepare(job_id)
         except ProbeError as exc:
             state.status = "failed"
             state.error = str(exc)
@@ -159,84 +223,129 @@ class JobManager:
         self._persist(state)
 
         # --- render + verify per platform (Phases 2-3) ---
-        self._render_versions(state, info)
-
-    def _render_versions(self, state: JobState, info) -> None:
-        """Render + verify each platform sequentially (FR-2.3).
-
-        A failed platform render does NOT fail the job — that platform shows
-        'failed' + stderr tail; the others continue (FR-2.4).
-        """
-        from .models import SpecInfo, VersionState
-        from .pipeline import analyzer, ass, renderer, rules, stills, verifier
-
-        platforms = rules.load_platforms()
         state.status = "rendering"
         self._persist(state)
 
-        job_dir = self.job_path(state.job_id)
+        for pid in list(state.versions):
+            self._render_one(job_id, pid, info=info, cues=cues, face_anchor=face_anchor)
+
+        state = self._load(job_id)
+        state.status = "done"
+        self._persist(state)
+
+    def _prepare(self, job_id: str) -> tuple[MediaInfo, list, tuple[float, float] | None]:
+        """Pipeline inputs for (re-)rendering: probe + SRT + scene anchors.
+
+        Memoized per job: the inputs depend only on in.mp4/in.srt, which the
+        API never mutates after create_job, so the result is stable for the
+        job's lifetime. Re-renders then skip the O(samples x Haar-detect)
+        video analysis entirely — a 60 s clip costs ~15 s of CPU per
+        re-render otherwise.
+        """
+        cached = self._analysis_cache.get(job_id)
+        if cached is not None:
+            return cached
+        job_dir = self.job_path(job_id)
+        info = probe(job_dir / "in.mp4")
         cues = ass.parse_captions(
             (job_dir / "in.srt").read_text(encoding="utf-8"), "in.srt"
         )
         scenes = analyzer.analyze_scenes(job_dir / "in.mp4", info)
-        anchor = scenes[0] if scenes else None
-        anchor_x = anchor.anchor_x if anchor else 0.5
-        anchor_y = anchor.anchor_y if anchor else 0.5
+        result = (info, cues, analyzer.first_face_anchor(scenes))
+        self._analysis_cache[job_id] = result
+        return result
 
-        for pid, cfg in platforms.items():
-            version = state.versions.get(pid) or VersionState(status="queued")
-            state.versions[pid] = version
-            version.status = "rendering"
-            version.progress = 5
+    def _render_one(
+        self,
+        job_id: str,
+        platform: str,
+        info: MediaInfo | None = None,
+        cues: list | None = None,
+        face_anchor: tuple[float, float] | None = None,
+    ) -> None:
+        """Render + verify ONE platform version (FR-2.3, FR-2.4).
+
+        Used by both the initial pass and single-platform re-renders. A failed
+        render does NOT fail the job — the version shows 'failed' + stderr tail.
+        """
+        state = self._load(job_id)
+        if state is None or platform not in state.versions:
+            return
+        version = state.versions[platform]
+
+        if info is None:  # re-render path: recompute pipeline inputs
+            info, cues, face_anchor = self._prepare(job_id)
+
+        version.status = "rendering"
+        version.progress = 5
+        version.error = None
+        version.checks = []
+        version.stills = []
+        self._persist(state)
+
+        def progress(pct: int) -> None:
+            version.progress = pct
             self._persist(state)
 
-            def progress(pct: int, version=version) -> None:
-                version.progress = pct
-                self._persist(state)
+        try:
+            cfg = rules.load_platforms()[platform]
+            ass_text, wrapped = ass.build_ass(cfg, cues, info.duration_s)
+            job_dir = self.job_path(job_id)
+            ass_path = job_dir / f"{platform}.ass"
+            ass_path.write_text(ass_text)
 
+            # Anchor priority: manual override (FR-4.3) > face anchor (FR-4.2)
+            # > center. Blur-pad ignores the anchor entirely (FR-3.3).
+            anchor = version.anchor_override or face_anchor or (0.5, 0.5)
+            crop = None
+            if version.fit == "crop":
+                crop = rules.crop_window(cfg, info.width, info.height, anchor[0], anchor[1])
+            vf = renderer.build_vf(crop, ass_path, config.FONTS_DIR, version.fit)
+            renderer.render(job_dir, platform, vf, info.duration_s, on_progress=progress)
+
+            version.progress = 100
+            output_path = job_dir / "versions" / f"{platform}.mp4"
+            output = probe(output_path)
+            version.checks = verifier.verify(
+                cfg,
+                wrapped,
+                output,
+                info.has_audio,
+                face_expected=face_anchor is not None,
+                output_path=output_path,
+            )
+            version.spec = SpecInfo(
+                width=output.width,
+                height=output.height,
+                duration_s=output.duration_s,
+                margins={
+                    "bottom": cfg.bottom_margin,
+                    "right": cfg.right_margin,
+                    "top": cfg.top_margin,
+                },
+            )
+            version.download_url = f"/api/jobs/{state.job_id}/versions/{platform}"
+            # Stills are non-fatal (FR-6.1): a failure only leaves fewer previews.
             try:
-                ass_text, wrapped = ass.build_ass(cfg, cues, info.duration_s)
-                ass_path = job_dir / f"{pid}.ass"
-                ass_path.write_text(ass_text)
-
-                crop = rules.crop_window(cfg, info.width, info.height, anchor_x, anchor_y)
-                vf = renderer.build_vf(crop, ass_path, config.FONTS_DIR)
-                renderer.render(job_dir, pid, vf, info.duration_s, on_progress=progress)
-
-                version.progress = 100
-                version.status = "done"
-                output = probe(job_dir / "versions" / f"{pid}.mp4")
-                version.checks = verifier.verify(cfg, wrapped, output, info.has_audio)
-                version.spec = SpecInfo(
-                    width=output.width,
-                    height=output.height,
-                    duration_s=output.duration_s,
-                    margins={
-                        "bottom": cfg.bottom_margin,
-                        "right": cfg.right_margin,
-                        "top": cfg.top_margin,
-                    },
+                still_paths = stills.extract_stills(
+                    job_dir, platform, output.duration_s, [cue.start_ms for cue in cues]
                 )
-                version.download_url = f"/api/jobs/{state.job_id}/versions/{pid}"
-                # Stills are non-fatal (FR-6.1): a failure only leaves fewer previews.
-                try:
-                    still_paths = stills.extract_stills(
-                        job_dir, pid, output.duration_s, [cue.start_ms for cue in cues]
-                    )
-                    version.stills = [
-                        f"/api/jobs/{state.job_id}/stills/{pid}/{i}"
-                        for i in range(len(still_paths))
-                    ]
-                except Exception:
-                    version.stills = []
-                self._persist(state)
-            except Exception as exc:  # platform-level failure only (FR-2.4)
-                version.status = "failed"
-                version.error = str(exc)[:500]
-                self._persist(state)
-
-        state.status = "done"
-        self._persist(state)
+                version.stills = [
+                    f"/api/jobs/{state.job_id}/stills/{platform}/{i}"
+                    for i in range(len(still_paths))
+                ]
+            except Exception:
+                version.stills = []
+            # Flip to done LAST. probe()+verify() take hundreds of ms; setting
+            # status="done" first lets a concurrent reader (API poll) tear a
+            # snapshot pairing done with the still-empty checks list. Ordering
+            # the writes makes "done" imply fully-verified output.
+            version.status = "done"
+            self._persist(state)
+        except Exception as exc:  # platform-level failure only (FR-2.4)
+            version.status = "failed"
+            version.error = str(exc)[:500]
+            self._persist(state)
 
 
 def ffmpeg_available() -> tuple[str | None, bool]:

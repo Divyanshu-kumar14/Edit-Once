@@ -171,3 +171,86 @@ def test_download_before_done_404(client) -> None:
     if state["versions"]["tiktok"]["status"] != "done":
         dl = client.get(f"/api/jobs/{job_id}/versions/tiktok")
         assert dl.status_code == 404
+
+
+# --- Day-2: per-version options (FR-3.3 fit, FR-4.3 anchor re-render) -------
+
+def _put_options(client, job_id: str, platform: str, body: dict):
+    return client.put(f"/api/jobs/{job_id}/versions/{platform}/options", json=body)
+
+
+def test_options_anchor_rerenders_only_that_platform(client) -> None:
+    resp = _upload_fixture(client)
+    job_id = resp.json()["job_id"]
+    done = _poll_done(client, job_id)
+    assert done["status"] == "done"
+
+    # Snapshot the other platforms' download URLs to prove they're untouched.
+    reels_url = done["versions"]["reels"]["download_url"]
+
+    put = _put_options(client, job_id, "tiktok", {"fit": "crop", "anchor": [0.3, 0.6]})
+    assert put.status_code == 200
+    body = put.json()
+    assert body["versions"]["tiktok"]["status"] == "rendering"
+    assert body["versions"]["tiktok"]["anchor_override"] == [0.3, 0.6]
+    assert body["versions"]["tiktok"]["download_url"] is None  # stale until done
+
+    # Re-rendered version finishes and keeps its override.
+    deadline = time.monotonic() + 90.0
+    while time.monotonic() < deadline:
+        state = client.get(f"/api/jobs/{job_id}").json()
+        if state["versions"]["tiktok"]["status"] in ("done", "failed"):
+            break
+        time.sleep(0.25)
+    tiktok = state["versions"]["tiktok"]
+    assert tiktok["status"] == "done", tiktok.get("error")
+    assert tiktok["anchor_override"] == [0.3, 0.6]
+    assert tiktok["download_url"] is not None
+    assert tiktok["spec"]["width"] == 1080
+
+    # Other platforms: still done with the SAME download url (never re-rendered).
+    assert state["versions"]["reels"]["status"] == "done"
+    assert state["versions"]["reels"]["download_url"] == reels_url
+
+
+def test_options_blur_rerenders_with_correct_ratio(client) -> None:
+    resp = _upload_fixture(client)
+    job_id = resp.json()["job_id"]
+    _poll_done(client, job_id)
+
+    put = _put_options(client, job_id, "shorts", {"fit": "blur"})
+    assert put.status_code == 200
+
+    deadline = time.monotonic() + 90.0
+    while time.monotonic() < deadline:
+        state = client.get(f"/api/jobs/{job_id}").json()
+        if state["versions"]["shorts"]["status"] in ("done", "failed"):
+            break
+        time.sleep(0.25)
+    version = state["versions"]["shorts"]
+    assert version["status"] == "done", version.get("error")
+    assert version["fit"] == "blur"
+    by_name = {c["name"]: c for c in version["checks"]}
+    assert by_name["resolution"]["result"] == "pass"
+    assert by_name["ratio"]["result"] == "pass"
+
+
+def test_options_unknown_job_or_platform_404(client) -> None:
+    resp = _upload_fixture(client)
+    job_id = resp.json()["job_id"]
+    assert _put_options(client, "nope", "tiktok", {"fit": "crop"}).status_code == 404
+    assert _put_options(client, job_id, "youtube", {"fit": "crop"}).status_code == 404
+
+
+def test_options_invalid_fit_422(client) -> None:
+    resp = _upload_fixture(client)
+    job_id = resp.json()["job_id"]
+    assert _put_options(client, job_id, "tiktok", {"fit": "stretch"}).status_code == 422
+
+
+def test_options_anchor_clamped(client) -> None:
+    resp = _upload_fixture(client)
+    job_id = resp.json()["job_id"]
+    put = _put_options(client, job_id, "x", {"fit": "crop", "anchor": [-0.2, 1.4]})
+    assert put.status_code == 200
+    assert put.json()["versions"]["x"]["anchor_override"] == [0.0, 1.0]

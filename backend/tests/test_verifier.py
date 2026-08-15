@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from app.pipeline.ass import WrappedCue
 from app.pipeline.probe import MediaInfo
 from app.pipeline.rules import load_platforms
@@ -9,6 +11,7 @@ from app.pipeline.verifier import (
     check_audio,
     check_captions_safe,
     check_duration,
+    check_face,
     check_ratio,
     check_resolution,
     verify,
@@ -82,3 +85,55 @@ def test_verify_bundle_all_pass() -> None:
     checks = verify(cfg, _wrapped(lines=3), _info(), source_has_audio=True)
     assert [c.name for c in checks] == ["resolution", "ratio", "captions_safe", "audio", "duration"]
     assert all(c.result == "pass" for c in checks)
+
+
+# --- Day-2: face check (AC-9) ----------------------------------------------
+
+SHORT_MP4 = Path(__file__).parent / "fixtures" / "short" / "fixture.mp4"
+
+
+def test_verify_skips_face_check_when_not_expected() -> None:
+    cfg = load_platforms()["tiktok"]
+    checks = verify(
+        cfg, _wrapped(lines=3), _info(), source_has_audio=True,
+        face_expected=False, output_path=SHORT_MP4,
+    )
+    assert [c.name for c in checks] == ["resolution", "ratio", "captions_safe", "audio", "duration"]
+
+
+def test_check_face_pass_when_centered(monkeypatch) -> None:
+    # A face box whose center is inside the central region (AC-9).
+    monkeypatch.setattr(
+        "app.pipeline.verifier.detect_faces",
+        lambda frame: [(400, 800, 200, 200)],  # center ≈ (0.46, 0.47) on 1080x1920
+    )
+    result = check_face(SHORT_MP4)
+    assert result.name == "face"
+    assert result.result == "pass"
+
+
+def test_check_face_fail_when_no_face(monkeypatch) -> None:
+    monkeypatch.setattr("app.pipeline.verifier.detect_faces", lambda frame: [])
+    result = check_face(SHORT_MP4)
+    assert result.result == "fail"
+
+
+def test_check_face_fail_when_off_center(monkeypatch) -> None:
+    # Box hugging the left edge: cx≈0.05 -> not in the central region.
+    monkeypatch.setattr(
+        "app.pipeline.verifier.detect_faces", lambda frame: [(10, 900, 100, 100)]
+    )
+    result = check_face(SHORT_MP4)
+    assert result.result == "fail"
+
+
+def test_verify_bundle_includes_face_when_expected(monkeypatch) -> None:
+    monkeypatch.setattr("app.pipeline.verifier.detect_faces", lambda frame: [(400, 800, 200, 200)])
+    cfg = load_platforms()["tiktok"]
+    checks = verify(
+        cfg, _wrapped(lines=3), _info(), source_has_audio=True,
+        face_expected=True, output_path=SHORT_MP4,
+    )
+    names = [c.name for c in checks]
+    assert names == ["resolution", "ratio", "captions_safe", "audio", "duration", "face"]
+    assert checks[-1].result == "pass"

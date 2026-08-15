@@ -17,6 +17,8 @@ export interface SpecInfo {
 
 export type VersionStatus = "queued" | "rendering" | "done" | "failed";
 
+export type FitMode = "crop" | "blur";
+
 export interface VersionState {
   status: VersionStatus;
   progress: number;
@@ -25,6 +27,13 @@ export interface VersionState {
   stills: string[];
   download_url: string | null;
   spec: SpecInfo | null;
+  fit: FitMode;                       // FR-3.3: crop (smart) vs blur-pad
+  anchor_override: [number, number] | null;  // FR-4.3: manual crop anchor
+}
+
+export interface VersionOptions {
+  fit: FitMode;
+  anchor?: [number, number] | null;
 }
 
 export interface InputInfo {

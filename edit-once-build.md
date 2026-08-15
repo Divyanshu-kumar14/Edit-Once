@@ -43,9 +43,9 @@ Build the PRD-approved app (backend + frontend): upload video+SRT → 4 platform
 - → **GATE:** AC-8 — clean-ish E2E at localhost:8000, demo.sh prints PASS table
 
 ### Phase 5 — Day 2 options (USER PICKS, cut anything below line)
-- [ ] A: Face anchor FR-4.2 (OpenCV Haar, ~1/2s samples) → AC-9
-- [ ] B: Manual crop override FR-4.3 + re-render
-- [ ] C: Blur-pad FR-3.3 (extreme ratios)
+- [x] A: Face anchor FR-4.2 (OpenCV Haar, ~1/2s samples) → AC-9
+- [x] B: Manual crop override FR-4.3 + re-render
+- [x] C: Blur-pad FR-3.3 (extreme ratios)
 - [ ] D: Batch FR-9 (P2)
 - [ ] E: YouTube upload FR-10 (P2 — cut if any auth friction)
 - [ ] F: Polish: README arch diagram, demo script, real demo clip

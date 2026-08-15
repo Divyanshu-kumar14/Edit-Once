@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config
-from .models import JobState
+from .models import JobState, VersionOptions
 from .pipeline.ass import SrtParseError, parse_captions
 from .pipeline.probe import ProbeError, probe
 from .queue import JobManager, ffmpeg_available
@@ -140,6 +140,17 @@ def get_job(job_id: str) -> JobState:
     state = manager.get(job_id)
     if state is None:
         raise HTTPException(status_code=404, detail="Job not found")
+    return state
+
+
+@app.put("/api/jobs/{job_id}/versions/{platform}/options")
+def update_version_options(job_id: str, platform: str, body: VersionOptions) -> JobState:
+    """Apply per-version fit/anchor and re-render that platform (FR-3.3, FR-4.3)."""
+    state = manager.update_version_options(
+        job_id, platform, body.fit, body.anchor
+    )
+    if state is None:
+        raise HTTPException(status_code=404, detail="Job or platform not found")
     return state
 
 

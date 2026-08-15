@@ -34,13 +34,33 @@ def escape_filter_path(path: Path) -> str:
     return f"'{s}'"
 
 
-def build_vf(crop: CropWindow | None, ass_path: Path, fonts_dir: Path) -> str:
-    """Video filter chain: optional crop -> scale to 1080x1920 -> burn captions."""
+def build_vf(
+    crop: CropWindow | None,
+    ass_path: Path,
+    fonts_dir: Path,
+    fit: str = "crop",
+) -> str:
+    """Video filter chain for one platform version.
+
+    fit="crop" (default): anchored smart crop -> 1080x1920 (FR-4).
+    fit="blur"  (FR-3.3): blur-pad — a blurred, stretched fill layer with the
+    sharp full-content frame overlaid on top, for extreme aspect ratios where
+    cropping would throw away too much of the shot.
+    """
+    subs = f"subtitles={escape_filter_path(ass_path)}:fontsdir={escape_filter_path(fonts_dir)}"
+    if fit == "blur":
+        return (
+            "split=2[a][b];"
+            "[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
+            f"gblur=sigma=24[bg];"
+            "[b]scale=1080:1920:force_original_aspect_ratio=decrease[fg];"
+            f"[bg][fg]overlay=(W-w)/2:(H-h)/2,{subs}"
+        )
     parts: list[str] = []
     if crop is not None:
         parts.append(f"crop=w={crop.w}:h={crop.h}:x={crop.x}:y={crop.y}")
     parts.append("scale=1080:1920:flags=lanczos")
-    parts.append(f"subtitles={escape_filter_path(ass_path)}:fontsdir={escape_filter_path(fonts_dir)}")
+    parts.append(subs)
     return ",".join(parts)
 
 

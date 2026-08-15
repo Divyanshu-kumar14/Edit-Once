@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-CheckResultName = Literal["resolution", "ratio", "captions_safe", "audio", "duration"]
+CheckResultName = Literal["resolution", "ratio", "captions_safe", "audio", "duration", "face"]
 CheckResultLevel = Literal["pass", "warn", "fail"]
 
 
@@ -33,6 +33,17 @@ class VersionState(BaseModel):
     stills: list[str] = []  # api paths
     download_url: str | None = None
     spec: SpecInfo | None = None
+    # Day-2 (P1) options: how this version is framed (FR-3.3) and an optional
+    # manual crop anchor overriding the face/center anchor (FR-4.3).
+    fit: Literal["crop", "blur"] = "crop"
+    anchor_override: tuple[float, float] | None = None  # normalized 0..1
+
+
+class VersionOptions(BaseModel):
+    """PUT body for per-version options (FR-3.3 fit, FR-4.3 anchor)."""
+
+    fit: Literal["crop", "blur"] = "crop"
+    anchor: tuple[float, float] | None = None  # normalized 0..1
 
 
 class InputInfo(BaseModel):

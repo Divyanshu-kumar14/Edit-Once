@@ -2,12 +2,18 @@
 
 Each check returns a CheckResult; geometry checks use the ASS style + wrapped
 text to compute the caption box and compare it against the platform safe rect.
+The face check (AC-9) is the only one that touches the rendered file.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import cv2
+
 from ..models import CheckResult, CheckResultLevel
 from .ass import WrappedCue
+from .face import detect_faces
 from .probe import MediaInfo
 from .rules import LINE_HEIGHT_FACTOR, PlatformConfig
 
@@ -93,16 +99,54 @@ def check_duration(duration_s: float, limit_s: float) -> CheckResult:
     )
 
 
+def _face_is_centered(faces: list[tuple[int, int, int, int]], frame_w: int, frame_h: int) -> bool:
+    """AC-9: a face found in the central region (30-70% of each axis) counts."""
+    for x, y, w, h in faces:
+        cx, cy = (x + w / 2) / frame_w, (y + h / 2) / frame_h
+        if 0.3 <= cx <= 0.7 and 0.3 <= cy <= 0.7:
+            return True
+    return False
+
+
+def check_face(output_path: Path) -> CheckResult:
+    """Verify the face-aware crop actually centered a face (AC-9).
+
+    Only runs when the source had faces (face_expected=True in verify()).
+    Reads one frame mid-video; the largest face's center must sit in the
+    central region of the rendered frame.
+    """
+    try:
+        cap = cv2.VideoCapture(str(output_path))
+        try:
+            cap.set(cv2.CAP_PROP_POS_MSEC, 500)
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                return CheckResult(name="face", result="fail", detail="could not read output frame")
+            faces = detect_faces(frame)
+        finally:
+            cap.release()
+    except Exception as exc:
+        return CheckResult(name="face", result="fail", detail=f"face check error: {exc}")
+    if _face_is_centered(faces, frame.shape[1], frame.shape[0]):
+        return CheckResult(name="face", result="pass", detail=f"{len(faces)} face(s), centered")
+    return CheckResult(name="face", result="fail", detail="expected centered face, none detected")
+
+
 def verify(
     cfg: PlatformConfig,
     wrapped: list[WrappedCue],
     output: MediaInfo,
     source_has_audio: bool,
+    face_expected: bool = False,
+    output_path: Path | None = None,
 ) -> list[CheckResult]:
-    return [
+    checks: list[CheckResult] = [
         check_resolution(output.width, output.height, cfg.min_resolution),
         check_ratio(output.width, output.height),
         check_captions_safe(cfg, wrapped),
         check_audio(source_has_audio),
         check_duration(output.duration_s, cfg.duration_limit_s),
     ]
+    if face_expected and output_path is not None:
+        checks.append(check_face(output_path))
+    return checks
