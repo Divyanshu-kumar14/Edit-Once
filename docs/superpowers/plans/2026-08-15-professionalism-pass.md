@@ -717,6 +717,7 @@ async function modalCheck(page, w, h, label) {
   await page.waitForSelector(".progress", { timeout: 30000 });
   const progressText = await page.evaluate(() => document.querySelector(".progress h2")?.textContent.trim());
   if (!/Rendering your video|Analyzing/.test(progressText)) throw new Error("progress copy: " + progressText);
+  await page.screenshot({ path: "/tmp/opencode/qa/pro-progress.png" });
   await page.waitForSelector(".results", { timeout: 240000 });
   await page.waitForTimeout(2500);
 
@@ -724,7 +725,7 @@ async function modalCheck(page, w, h, label) {
     h2: document.querySelector(".results h2")?.textContent.trim(),
     hasSub: document.body.textContent.includes("Verified against each platform's spec."),
     chips: document.querySelector(".summary-checks")?.textContent.trim(),
-    badges: [...document.querySelectorAll(".grid .card .badge")].map((b) => b.textContent.trim()),
+    badges: [...document.querySelectorAll(".grid .card .card-head .badge")].map((b) => b.textContent.trim()),
     checkBadges: [...document.querySelectorAll(".check-row .badge")].map((b) => b.textContent.trim()),
     headerLeft: Math.round(document.querySelector(".header").getBoundingClientRect().left),
     headerW: Math.round(document.querySelector(".header").getBoundingClientRect().width),
