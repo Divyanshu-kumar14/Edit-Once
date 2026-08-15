@@ -1,12 +1,15 @@
 import { useCallback, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
+import { Upload } from "lucide-react";
 import { ApiError, pollJob, updateVersionOptions, uploadJob } from "./api";
 import { JobProgress } from "./components/JobProgress";
 import { ResultGrid } from "./components/ResultGrid";
 import { UploadDropzone } from "./components/UploadDropzone";
 import type { JobState, PlatformId, VersionOptions } from "./types";
+import { PLATFORM_LABELS, PLATFORM_ORDER } from "./types";
 import AuroraBackground from "./ui/AuroraBackground";
 import { Reveal } from "./ui/Reveal";
+import { Stagger } from "./ui/Stagger";
 
 type Screen = "upload" | "running" | "results";
 
@@ -94,12 +97,12 @@ export default function App() {
               <img src="/logo.jpg" alt="Edit Once Logo" className="brand-mark" />
               <div>
                 <h1>Edit Once</h1>
-                <p className="tagline gradient-text">Publish Everywhere — platform-correct shorts, verified.</p>
+                <p className="tagline gradient-text">One edit. Four platform-perfect videos.</p>
               </div>
             </div>
             {screen !== "upload" && (
               <button className="btn ghost" onClick={handleReset}>
-                New job
+                <Upload size={14} aria-hidden="true" /> New project
               </button>
             )}
           </div>
@@ -115,7 +118,51 @@ export default function App() {
         )}
 
         <main>
+          {screen === "upload" && (
+            <Reveal>
+              <section className="hero">
+                <h1 className="hero-title">One edit. Four platforms. Zero re-editing.</h1>
+                <p className="muted hero-sub">
+                  Upload once — get platform-correct videos for TikTok, Reels, Shorts and X,
+                  with captions re-rendered into each platform's safe zone.
+                </p>
+                <div className="pills" aria-label="Output platforms">
+                  {PLATFORM_ORDER.map((pid) => (
+                    <span key={pid} className="pill" data-platform={pid}>
+                      <span className="plat-dot" aria-hidden="true" />
+                      {PLATFORM_LABELS[pid]}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            </Reveal>
+          )}
           {screen === "upload" && <UploadDropzone onSubmit={handleUpload} />}
+          {screen === "upload" && (
+          <Stagger gap={0.12} className="how-it-works" aria-label="How it works">
+            <div className="step">
+              <span className="step-num" aria-hidden="true">1</span>
+              <div>
+                <h3>Upload</h3>
+                <p className="muted">One clean edit and its caption file.</p>
+              </div>
+            </div>
+            <div className="step">
+              <span className="step-num" aria-hidden="true">2</span>
+              <div>
+                <h3>We render</h3>
+                <p className="muted">Four platform-correct versions.</p>
+              </div>
+            </div>
+            <div className="step">
+              <span className="step-num" aria-hidden="true">3</span>
+              <div>
+                <h3>Export</h3>
+                <p className="muted">Replay or download each one.</p>
+              </div>
+            </div>
+          </Stagger>
+          )}
           {screen === "running" && job && <JobProgress job={job} />}
           {screen === "results" && job && (
             <ResultGrid job={job} onRerender={handleRerender} />

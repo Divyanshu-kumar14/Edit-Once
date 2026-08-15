@@ -283,6 +283,43 @@ html, body {
 }
 @keyframes error-in { from { opacity: 0; transform: translateY(-6px); } }
 
+/* --- upload hero + how-it-works ------------------------------------------- */
+.hero { max-width: 720px; margin: 44px auto 28px; text-align: center; }
+.hero-title { margin: 0 0 10px; font-size: var(--fs-display); font-weight: 600; }
+.hero-sub { margin: 0 auto 18px; max-width: 560px; }
+.pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 999px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+.pill .plat-dot { width: 8px; height: 8px; }
+/* Platform dot colors via the same data-platform → --plat mechanism as cards. */
+.pill[data-platform="tiktok"] { --plat: var(--plat-tiktok); }
+.pill[data-platform="reels"] { --plat: var(--plat-reels-a); }
+.pill[data-platform="shorts"] { --plat: var(--plat-shorts); }
+.pill[data-platform="x"] { --plat: var(--plat-x); }
+
+.how-it-works {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  margin: 32px 0 8px;
+}
+.how-it-works .step {
+  height: 100%;
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  border-radius: 14px; padding: 16px;
+}
+.how-it-works .step h3 { margin: 0 0 4px; font-size: var(--fs-h3); }
+.how-it-works .step p { margin: 0; font-size: 13px; }
+.step-num {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #0b0e14;
+  font-size: 13px; font-weight: 800;
+}
+
 /* --- skeleton shimmer (loading placeholder) -------------------------------- */
 .skeleton {
   position: relative;
@@ -565,6 +602,8 @@ html, body {
   .header-inner { padding: 12px 20px 16px; }
   .brand h1 { font-size: 18px; }
   .tagline { font-size: 12px; }
+  .hero { margin: 28px auto 20px; }
+  .how-it-works { grid-template-columns: 1fr; }
   .dropzone { padding: 32px 16px; }
   .check-detail { display: none; }
 }
