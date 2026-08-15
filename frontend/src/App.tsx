@@ -4,6 +4,8 @@ import { JobProgress } from "./components/JobProgress";
 import { ResultGrid } from "./components/ResultGrid";
 import { UploadDropzone } from "./components/UploadDropzone";
 import type { JobState, PlatformId, VersionOptions } from "./types";
+import AuroraBackground from "./ui/AuroraBackground";
+import { Reveal } from "./ui/Reveal";
 
 type Screen = "upload" | "running" | "results";
 
@@ -82,40 +84,45 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="brand">
-          <span className="brand-mark">EO</span>
-          <div>
-            <h1>Edit Once</h1>
-            <p className="tagline">Publish Everywhere — platform-correct shorts, verified.</p>
+    <div>
+      <AuroraBackground />
+      <div className="app">
+        <Reveal y={-10}>
+          <header className="header">
+            <div className="brand">
+              <span className="brand-mark">EO</span>
+              <div>
+                <h1>Edit Once</h1>
+                <p className="tagline gradient-text">Publish Everywhere — platform-correct shorts, verified.</p>
+              </div>
+            </div>
+            {screen !== "upload" && (
+              <button className="btn ghost" onClick={handleReset}>
+                New job
+              </button>
+            )}
+          </header>
+        </Reveal>
+
+        {error && (
+          <div className="error-banner" role="alert">
+            <strong>Error:</strong> {error}
           </div>
-        </div>
-        {screen !== "upload" && (
-          <button className="btn ghost" onClick={handleReset}>
-            New job
-          </button>
         )}
-      </header>
 
-      {error && (
-        <div className="error-banner" role="alert">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+        <main>
+          {screen === "upload" && <UploadDropzone onSubmit={handleUpload} />}
+          {screen === "running" && job && <JobProgress job={job} />}
+          {screen === "results" && job && (
+            <ResultGrid job={job} onRerender={handleRerender} />
+          )}
+        </main>
 
-      <main>
-        {screen === "upload" && <UploadDropzone onSubmit={handleUpload} />}
-        {screen === "running" && job && <JobProgress job={job} />}
-        {screen === "results" && job && (
-          <ResultGrid job={job} onRerender={handleRerender} />
-        )}
-      </main>
-
-      <footer className="footer">
-        Upload one clean edit + SRT → 4 platform-correct MP4s. Captions are re-rendered into
-        each platform's safe zone — your source must be caption-free.
-      </footer>
+        <footer className="footer">
+          Upload one clean edit + SRT → 4 platform-correct MP4s. Captions are re-rendered into
+          each platform's safe zone — your source must be caption-free.
+        </footer>
+      </div>
     </div>
   );
 }

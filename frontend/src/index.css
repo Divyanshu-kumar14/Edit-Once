@@ -137,12 +137,16 @@ html, body {
 }
 
 .header {
+  position: sticky; top: 0; z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0 24px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px 0 20px;
+  border-bottom: 1px solid var(--glass-border);
   margin-bottom: 28px;
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  background: rgba(11, 14, 20, 0.55);
 }
 
 .brand { display: flex; align-items: center; gap: 14px; }
@@ -154,6 +158,12 @@ html, body {
   font-weight: 800; font-size: 18px;
   border-radius: 10px;
   letter-spacing: 0.5px;
+  /* Soft "live" glow — pulses slowly, never blinks. */
+  animation: brand-pulse 3.4s ease-in-out infinite;
+}
+@keyframes brand-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 107, 53, 0.35); }
+  50% { box-shadow: 0 0 26px rgba(255, 107, 53, 0.6); }
 }
 .brand h1 { margin: 0; font-size: 22px; letter-spacing: 0.3px; }
 .tagline { margin: 0; color: var(--muted); font-size: 14px; }
@@ -161,7 +171,7 @@ html, body {
 .footer {
   margin-top: 48px;
   padding-top: 16px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-border);
   color: var(--muted);
   font-size: 13px;
 }
@@ -236,7 +246,10 @@ html, body {
   padding: 10px 14px;
   margin-bottom: 20px;
   font-size: 14px;
+  /* Calm slide-in — errors read better appearing than popping. */
+  animation: error-in 0.25s ease;
 }
+@keyframes error-in { from { opacity: 0; transform: translateY(-6px); } }
 
 /* --- skeleton shimmer (loading placeholder) -------------------------------- */
 .skeleton {
