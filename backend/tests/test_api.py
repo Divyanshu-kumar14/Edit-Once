@@ -339,3 +339,154 @@ def test_captions_endpoint_unknown_job_404(client) -> None:
 def test_health_reports_whisper(client) -> None:
     body = client.get("/api/health").json()
     assert "whisper" in body
+
+
+# ---------------------------------------------------------------------------
+# Groq SEO pack endpoint
+# ---------------------------------------------------------------------------
+
+def _make_done_job(data_dir: Path, status: str = "done", srt_text: str = VALID_SRT) -> str:
+    """Fabricate a minimal job dir + state.json (fast: no render needed)."""
+    import json
+    import uuid
+
+    from app.models import JobState
+
+    job_id = uuid.uuid4().hex[:12]
+    job_dir = Path(data_dir) / "jobs" / job_id
+    job_dir.mkdir(parents=True)
+    state = JobState(
+        job_id=job_id,
+        status=status,  # type: ignore[arg-type]
+        created_at="2026-08-15T00:00:00+00:00",
+        versions={},
+        captions={"source": "uploaded", "cue_count": 1},
+    )
+    (job_dir / "state.json").write_text(state.model_dump_json(indent=2))
+    (job_dir / "in.srt").write_text(srt_text, encoding="utf-8")
+    return job_id
+
+
+def _fake_generate(api_key, transcript, platform, meta, timeout_s=None):
+    """Deterministic fake Groq pack — content reflects the platform arg."""
+    from app.models import SeoPack
+
+    return SeoPack(
+        title=f"{platform} title",
+        description=f"{platform} description",
+        hashtags=["tag1", "tag2", "tag3"],
+    )
+
+
+def test_seo_happy_path_persists(client, data_dir, monkeypatch) -> None:
+    from app.main import config as main_config
+    from app.main import seo as main_seo
+
+    monkeypatch.setattr(main_seo, "stack_available", lambda: True)
+    monkeypatch.setattr(main_config, "GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(main_seo, "generate_pack", _fake_generate)
+
+    job_id = _make_done_job(data_dir)
+    resp = client.post(f"/api/jobs/{job_id}/seo")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert set(body["packs"]) == {"tiktok", "reels", "shorts", "x"}
+    assert body["packs"]["tiktok"]["title"] == "tiktok title"
+    assert body["packs"]["tiktok"]["hashtags"] == ["tag1", "tag2", "tag3"]
+    assert body["generated_at"]
+
+    # Cached in state.json: a plain GET (no API call) returns the packs.
+    job = client.get(f"/api/jobs/{job_id}").json()
+    assert job["seo_packs"]["x"]["title"] == "x title"
+    assert job["seo_generated_at"] == body["generated_at"]
+
+
+def test_seo_unknown_job_404(client, monkeypatch) -> None:
+    from app.main import config as main_config
+    from app.main import seo as main_seo
+
+    monkeypatch.setattr(main_seo, "stack_available", lambda: True)
+    monkeypatch.setattr(main_config, "GROQ_API_KEY", "test-key")
+    resp = client.post("/api/jobs/does-not-exist/seo")
+    assert resp.status_code == 404
+
+
+def test_seo_requires_done_job_409(client, data_dir, monkeypatch) -> None:
+    from app.main import config as main_config
+    from app.main import seo as main_seo
+
+    monkeypatch.setattr(main_seo, "stack_available", lambda: True)
+    monkeypatch.setattr(main_config, "GROQ_API_KEY", "test-key")
+    job_id = _make_done_job(data_dir, status="rendering")
+    resp = client.post(f"/api/jobs/{job_id}/seo")
+    assert resp.status_code == 409
+    assert "finished" in resp.json()["detail"]
+
+
+def test_seo_no_key_503(client, data_dir, monkeypatch) -> None:
+    from app.main import seo as main_seo
+
+    monkeypatch.setattr(main_seo, "stack_available", lambda: False)
+    job_id = _make_done_job(data_dir)
+    resp = client.post(f"/api/jobs/{job_id}/seo")
+    assert resp.status_code == 503
+    assert "GROQ_API_KEY" in resp.json()["detail"]
+
+
+def test_seo_partial_failure_isolated(client, data_dir, monkeypatch) -> None:
+    from app.main import config as main_config
+    from app.main import seo as main_seo
+    from app.pipeline.seo import SeoError
+
+    monkeypatch.setattr(main_seo, "stack_available", lambda: True)
+    monkeypatch.setattr(main_config, "GROQ_API_KEY", "test-key")
+
+    def flaky_generate(api_key, transcript, platform, meta, timeout_s=None):
+        if platform == "x":
+            raise SeoError("Groq API error: 429 rate limited")
+        return _fake_generate(api_key, transcript, platform, meta)
+
+    monkeypatch.setattr(main_seo, "generate_pack", flaky_generate)
+    job_id = _make_done_job(data_dir)
+    resp = client.post(f"/api/jobs/{job_id}/seo")
+    assert resp.status_code == 200, resp.text
+    packs = resp.json()["packs"]
+    assert packs["x"]["error"]
+    assert packs["tiktok"]["title"] == "tiktok title"  # others unaffected
+
+
+def test_seo_all_failed_502(client, data_dir, monkeypatch) -> None:
+    from app.main import config as main_config
+    from app.main import seo as main_seo
+    from app.pipeline.seo import SeoError
+
+    monkeypatch.setattr(main_seo, "stack_available", lambda: True)
+    monkeypatch.setattr(main_config, "GROQ_API_KEY", "test-key")
+
+    def boom(api_key, transcript, platform, meta, timeout_s=None):
+        raise SeoError("Groq API error: dead")
+
+    monkeypatch.setattr(main_seo, "generate_pack", boom)
+    job_id = _make_done_job(data_dir)
+    resp = client.post(f"/api/jobs/{job_id}/seo")
+    assert resp.status_code == 502
+    assert "Groq" in resp.json()["detail"]
+
+
+def test_seo_empty_transcript_409(client, data_dir, monkeypatch) -> None:
+    from app.main import config as main_config
+    from app.main import seo as main_seo
+
+    monkeypatch.setattr(main_seo, "stack_available", lambda: True)
+    monkeypatch.setattr(main_config, "GROQ_API_KEY", "test-key")
+    job_id = _make_done_job(data_dir, srt_text="")
+    resp = client.post(f"/api/jobs/{job_id}/seo")
+    assert resp.status_code == 409  # parse error or empty transcript → 409 either way
+
+
+def test_health_reports_groq(client, monkeypatch) -> None:
+    from app.main import seo as main_seo
+
+    monkeypatch.setattr(main_seo, "stack_available", lambda: False)
+    body = client.get("/api/health").json()
+    assert body["groq"] is False

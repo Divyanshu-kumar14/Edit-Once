@@ -26,3 +26,12 @@ backend/tests/fixtures/short/
 
 # Coverage report
 backend/.coverage
+
+#Super Power Skill
+.superpowers/
+docs/
+
+PRD.md
+edit-once-build.md
+# Local secrets (Groq API key, etc.) — never commit
+.env

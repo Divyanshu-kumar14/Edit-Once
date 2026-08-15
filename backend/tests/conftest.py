@@ -8,6 +8,9 @@ from pathlib import Path
 
 _TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="editonce-test-"))
 os.environ["EDITONCE_DATA_DIR"] = str(_TEST_DATA_DIR)
+# Deterministic: tests must not depend on a dev machine's real secrets.
+os.environ.pop("EDITONCE_GROQ_API_KEY", None)
+os.environ.pop("GROQ_API_KEY", None)
 
 import pytest  # noqa: E402
 

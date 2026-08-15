@@ -45,3 +45,8 @@ POLL_INTERVAL_S = 2.0  # FR-8.4
 WHISPER_MODEL = os.environ.get("EDITONCE_WHISPER_MODEL", "base")
 WHISPER_DEVICE = "cpu"
 WHISPER_COMPUTE_TYPE = "int8"
+
+# --- Groq (on-demand SEO packs) ---
+GROQ_API_KEY = os.environ.get("EDITONCE_GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
+GROQ_MODEL = os.environ.get("EDITONCE_GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_TIMEOUT_S = float(os.environ.get("EDITONCE_GROQ_TIMEOUT_S", "30"))

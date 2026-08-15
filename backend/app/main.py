@@ -2,8 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# Load .env files BEFORE importing config (which reads env vars once).
+# uvicorn runs from backend/, so both repo-root and backend/.env are honored.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:  # pragma: no cover - dotenv is a hard dep
+    pass
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,11 +22,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config
-from .models import JobState, VersionOptions
-from .pipeline import transcriber
+from .models import JobState, SeoPack, VersionOptions
+from .pipeline import seo, transcriber
 from .pipeline.ass import SrtParseError, parse_captions
 from .pipeline.probe import ProbeError, probe
-from .queue import JobManager, ffmpeg_available
+from .queue import JobManager, ffmpeg_available, platform_ids
 
 manager = JobManager()
 
@@ -59,6 +70,7 @@ def health() -> dict[str, object]:
         "libass": libass,
         "fonts": fonts_ok,
         "whisper": transcriber.stack_available(),
+        "groq": seo.stack_available(),
     }
 
 
@@ -196,6 +208,65 @@ def download_captions(job_id: str) -> FileResponse:
         path,
         media_type="application/x-subrip",
         filename="captions.srt",
+    )
+
+
+@app.post("/api/jobs/{job_id}/seo")
+async def generate_seo(job_id: str) -> JSONResponse:
+    """Generate per-platform SEO packs (title/description/hashtags) via Groq.
+
+    On-demand and cached: results persist in state.json (re-visits don't
+    re-bill); a regenerate call overwrites them.
+    """
+    state = manager.get(job_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if state.status != "done":
+        raise HTTPException(
+            status_code=409, detail="SEO pack requires a finished job (status done)"
+        )
+    if not seo.stack_available():
+        raise HTTPException(
+            status_code=503,
+            detail="Groq API key not configured (set EDITONCE_GROQ_API_KEY in .env)",
+        )
+    if config.GROQ_API_KEY is None:
+        raise HTTPException(status_code=503, detail="Groq API key not configured")
+
+    srt_path = manager.job_path(job_id) / "in.srt"
+    if not srt_path.exists():
+        raise HTTPException(status_code=409, detail="No captions to ground the SEO pack")
+    try:
+        cues = parse_captions(srt_path.read_text(encoding="utf-8"), "in.srt")
+    except SrtParseError as exc:  # pragma: no cover - in.srt is written by us
+        raise HTTPException(status_code=409, detail=f"Caption parse error: {exc}") from exc
+    transcript = " ".join(c.text.strip() for c in cues)[: seo.MAX_TRANSCRIPT_CHARS]
+    if not transcript.strip():
+        raise HTTPException(status_code=409, detail="No captions to ground the SEO pack")
+
+    meta = {
+        "duration_s": state.input.duration_s if state.input else 0,
+    }
+    api_key = config.GROQ_API_KEY
+    results: dict[str, SeoPack] = {}
+    errors = 0
+    for platform in platform_ids():
+        try:
+            results[platform] = await asyncio.to_thread(
+                seo.generate_pack, api_key, transcript, platform, meta
+            )
+        except seo.SeoError as exc:
+            results[platform] = SeoPack(error=str(exc))
+            errors += 1
+    if errors == len(results):
+        raise HTTPException(
+            status_code=502,
+            detail=next(r.error for r in results.values() if r.error),
+        )
+    generated_at = seo.now_iso()
+    manager.update_seo(job_id, results, generated_at)
+    return JSONResponse(
+        content={"packs": {k: v.model_dump() for k, v in results.items()}, "generated_at": generated_at}
     )
 
 

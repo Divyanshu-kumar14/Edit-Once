@@ -59,6 +59,15 @@ class CaptionsInfo(BaseModel):
     cue_count: int = 0
 
 
+class SeoPack(BaseModel):
+    """Per-platform SEO metadata (title, description, hashtags) from Groq."""
+
+    title: str = ""
+    description: str = ""
+    hashtags: list[str] = []
+    error: str | None = None  # per-platform failure (others still succeed)
+
+
 class JobState(BaseModel):
     job_id: str
     status: Literal["queued", "transcribing", "analyzing", "rendering", "done", "failed"]
@@ -68,3 +77,5 @@ class JobState(BaseModel):
     error: str | None = None  # whole-job failure (e.g. analysis crash)
     captions: CaptionsInfo | None = None  # None only for pre-AI jobs on disk
     transcribe_progress: int = 0  # 0..100 during the transcribing stage
+    seo_packs: dict[str, SeoPack] = {}  # platform → pack (on-demand Groq)
+    seo_generated_at: str | None = None  # ISO-8601

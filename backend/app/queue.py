@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import config
-from .models import CaptionsInfo, InputInfo, JobState, SpecInfo, VersionState
+from .models import CaptionsInfo, InputInfo, JobState, SeoPack, SpecInfo, VersionState
 from .pipeline import analyzer, ass, renderer, rules, stills, transcriber, verifier
 from .pipeline.probe import MediaInfo, ProbeError, probe
 from .pipeline.transcriber import TranscriptionError
@@ -21,6 +21,9 @@ from .pipeline.transcriber import TranscriptionError
 def _platform_ids() -> list[str]:
     """Platform keys from platforms.json (single source of truth, FR-3.1)."""
     return list(rules.load_platforms())  # lru_cached: O(1) after first load
+
+
+platform_ids = _platform_ids  # public alias for API endpoints
 
 
 class JobError(RuntimeError):
@@ -129,6 +132,25 @@ class JobManager:
         version.progress = 0
         self._persist(state)
         self._queue.put(("render", job_id, platform))
+        return state
+
+    def update_seo(
+        self,
+        job_id: str,
+        packs: dict[str, SeoPack],
+        generated_at: str,
+    ) -> JobState | None:
+        """Persist generated SEO packs onto the job state (additive, cached).
+
+        Re-visits never re-bill: packs live in state.json until the user
+        explicitly regenerates (which overwrites via a new call).
+        """
+        state = self._load(job_id)
+        if state is None:
+            return None
+        state.seo_packs = packs
+        state.seo_generated_at = generated_at
+        self._persist(state)
         return state
 
     def get(self, job_id: str) -> JobState | None:
