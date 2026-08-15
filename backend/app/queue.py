@@ -187,7 +187,10 @@ class JobManager:
         # Keep the cache in sync so get() stays O(1) (tmp+rename = atomic disk write)
         self._cache[state.job_id] = state
         path = self._jobs_dir / state.job_id / "state.json"
-        tmp = path.with_suffix(".json.tmp")
+        # Unique tmp name per write: the worker thread and API threads can
+        # persist the same job concurrently; a shared tmp path would let the
+        # first os.replace() move it away and crash the second (ENOENT).
+        tmp = path.with_name(f"state.{uuid.uuid4().hex}.json.tmp")
         tmp.write_text(state.model_dump_json(indent=2))
         tmp.replace(path)
 
