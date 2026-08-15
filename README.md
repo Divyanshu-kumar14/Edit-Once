@@ -65,13 +65,17 @@ flowchart LR
     S --> J[state.json on disk]
     J --> FE[React frontend · 2 s polling]
     FE --> D[Downloads · MP4]
+    J --> G[SEO pack · Groq, on demand]
 ```
 
 - **Backend** — Python 3.11+ / FastAPI, ffmpeg (libass) + OpenCV as subprocesses, no
-  database, no external APIs (fully offline demo).
+  database; fully offline by default — the optional Groq key is the only external API.
 - **Frontend** — Vite + React + TypeScript, dark aurora-glass design (hand-rolled tokens,
   Inter Variable, lucide icons), Framer Motion primitives (`Reveal`, `Stagger`, `Shine`),
-  fullscreen 9:16 video modal, responsive 4-up results grid.
+  skeleton loaders, fullscreen 9:16 video modal, responsive 4-up results grid.
+- **Accessibility** — WCAG-AA contrast (secondary text ≈7.4:1), `aria-busy`/`role=alert`
+  live regions, `:focus-visible` rings so keyboard focus never relies on color alone, and
+  `prefers-reduced-motion` support that collapses all animations.
 - **Pipeline** — `probe → analyze → render → verify → stills`, one render at a time
   globally, per-version state persisted to `data/jobs/{id}/state.json`.
 
@@ -97,14 +101,14 @@ For development: `cd frontend && npm run dev` (Vite on :5173, proxies /api → :
 ## Verify it
 
 ```bash
-cd backend && ../.venv/bin/pytest          # unit + API tests (89 tests)
-./scripts/demo.sh                          # scripted E2E: fixture → 4 MP4s → checklist table
+cd backend && ../.venv/bin/pytest          # unit + API tests (113 tests)
+cd frontend && npx tsc --noEmit && npm run build   # typecheck + production build
 ```
 
 The deterministic fixture (`backend/tests/fixtures/make_fixture.py`) generates a 30 s
 1080×1920 clip with a moving subject + sine audio and an 8-cue SRT — no internet needed.
 Caption transcription uses faster-whisper (`base` model) entirely offline; `scripts/setup.sh`
-pre-downloads it once so the demo never touches the network.
+pre-downloads it once so transcription never touches the network.
 
 ## The verification checklist (the differentiator)
 
@@ -121,37 +125,20 @@ specifics (SRT errors name the line).
 | audio | stream present | — | no audio in source |
 | duration | ≤ platform limit | exceeds limit (shows number) | — |
 
-## Demo script (2–4 min submission)
+## Recent polish
 
-1. "I edit one short for TikTok — then I have to re-edit it for Reels, Shorts, and X. This
-   repacks it for all four, correctly."
-2. Upload a video — no SRT needed, captions are transcribed on-device. Watch the
-   transcribing bar fill, then 4 progress bars.
-3. Results: all four versions in a single row, 9:16 previews side by side. Click any
-   preview for the fullscreen player, or hit **Download MP4**. The captions panel shows
-   what was used (auto-transcribed or your upload) with a one-click SRT download.
-4. Drag any preview (or use the arrow keys) to re-position the crop anchor — that version
-   re-renders around your anchor. The engine verified every version server-side
-   (resolution, ratio, caption safe-zone, audio, duration) before marking it Ready.
-5. Download one. "Automation by default, control when it's wrong."
-6. Optional: hit **Generate SEO pack** — four platform-tuned titles, descriptions and
-   hashtags grounded in the transcript, each editable and one-click copyable.
-
-## Status
-
-- [x] M1 backend skeleton (queue, probe, upload validation, health)
-- [x] M2 single-platform render (ASS → ffmpeg → verify)
-- [x] M3 all 4 platforms + stills + downloads + checklists
-- [x] M4 frontend + setup/run/demo scripts (E2E green)
-- [x] M5 face anchors, manual crop override, blur-pad fit (FR-4.3)
-- [x] M6 professionalism pass: Inter Variable typography, lucide icons, product-voice
-      copy, upload hero + platform pills + how-it-works strip, calmer aurora tone,
-      fullscreen 9:16 modal, minimal 4-up results grid (29 commits)
-- [x] M7 AI captions: optional SRT upload → local faster-whisper transcription stage,
-      transcribing progress in UI, captions source + SRT download on results
-- [x] M8 SEO packs: on-demand per-platform titles/descriptions/hashtags via Groq,
-      transcript-grounded, editable + copy, cached in state.json (no re-billing)
-- [ ] Batch upload, YouTube upload (priority order)
+- **Memoized toolchain health** — the health endpoint used to spawn two subprocesses
+  (`ffmpeg -version`, `-filters`) per call; it's now cached with a 30 s TTL, making the
+  check O(1) after the first call. The binary's features can't change mid-process, so the
+  cache is always correct.
+- **O(n) caption truncation** — the "…" ellipsis path previously re-scanned and re-copied
+  the line per dropped character (O(n²) worst case); it now tracks text width incrementally
+  in a single pass.
+- **Skeleton loaders for SEO packs** — 4 LLM calls take seconds; shimmering placeholder
+  cards hold the grid stable (zero layout shift) during first generation and regeneration.
+- **Keyboard-first controls** — crop-anchor dragging has a full keyboard equivalent
+  (arrows nudge 5%), modals close on Escape, and every copy/regenerate control gets a
+  visible `:focus-visible` ring.
 
 ## License
 
