@@ -557,3 +557,13 @@ html, body {
 .badge.transcribing {
   color: var(--accent);
 }
+
+/* Captions provenance panel on the results screen (copy-out escape hatch) */
+.captions-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}

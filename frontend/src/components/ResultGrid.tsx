@@ -5,6 +5,7 @@ import {
   type PlatformId,
   type VersionOptions,
 } from "../types";
+import { captionsUrl } from "../api";
 import { PlatformCard } from "./PlatformCard";
 import { Reveal } from "../ui/Reveal";
 import { Stagger } from "../ui/Stagger";
@@ -15,11 +16,29 @@ interface Props {
 }
 
 export function ResultGrid({ job, onRerender }: Props) {
+  const captions = job.captions;
   return (
     <section className="results">
       <Reveal>
         <h2>Your versions are ready</h2>
       </Reveal>
+      {captions && (
+        <Reveal>
+          <div className="captions-panel glass" aria-label="Captions used for this job">
+            <div>
+              <strong>Captions</strong>
+              <span className="muted">
+                {" "}
+                · {captions.cue_count} cue{captions.cue_count === 1 ? "" : "s"} ·{" "}
+                {captions.source === "transcribed" ? "auto-transcribed from audio" : "from your upload"}
+              </span>
+            </div>
+            <a className="btn ghost" href={captionsUrl(job.job_id)} download>
+              Download SRT
+            </a>
+          </div>
+        </Reveal>
+      )}
       <Stagger gap={0.09} startDelay={0.15} className="grid">
         {PLATFORM_ORDER.map((pid) => (
           <PlatformCard
