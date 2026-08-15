@@ -167,6 +167,8 @@ html, body {
 }
 .brand h1 { margin: 0; font-size: 22px; letter-spacing: 0.3px; }
 .tagline { margin: 0; color: var(--muted); font-size: 14px; }
+/* Gradient overrides the muted fallback (same specificity, later wins). */
+.tagline.gradient-text { color: transparent; }
 
 .footer {
   margin-top: 48px;
