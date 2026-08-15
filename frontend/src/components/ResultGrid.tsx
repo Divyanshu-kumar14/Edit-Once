@@ -3,19 +3,22 @@ import {
   PLATFORM_ORDER,
   type JobState,
   type PlatformId,
+  type SeoPack,
   type VersionOptions,
 } from "../types";
 import { captionsUrl } from "../api";
 import { PlatformCard } from "./PlatformCard";
+import { SeoSection } from "./SeoSection";
 import { Reveal } from "../ui/Reveal";
 import { Stagger } from "../ui/Stagger";
 
 interface Props {
   job: JobState;
   onRerender: (platform: PlatformId, options: VersionOptions) => void;
+  onSeoPacks: (packs: Partial<Record<PlatformId, SeoPack>>, generatedAt: string) => void;
 }
 
-export function ResultGrid({ job, onRerender }: Props) {
+export function ResultGrid({ job, onRerender, onSeoPacks }: Props) {
   const captions = job.captions;
   return (
     <section className="results">
@@ -50,6 +53,7 @@ export function ResultGrid({ job, onRerender }: Props) {
           />
         ))}
       </Stagger>
+      <SeoSection job={job} onPacks={onSeoPacks} />
     </section>
   );
 }

@@ -1,6 +1,6 @@
 /** Typed fetch wrappers + 2 s polling (FR-8.4). */
 
-import type { CaptionsSource, JobState, VersionOptions } from "./types";
+import type { CaptionsSource, JobState, PlatformId, SeoPack, VersionOptions } from "./types";
 
 const API_BASE = "";
 
@@ -41,6 +41,18 @@ export async function uploadJob(video: File, srt: File | null): Promise<UploadRe
 
 export function captionsUrl(jobId: string): string {
   return `${API_BASE}/api/jobs/${jobId}/captions`;
+}
+
+export interface SeoResponse {
+  packs: Record<PlatformId, SeoPack>;
+  generated_at: string;
+}
+
+/** On-demand per-platform SEO packs (title/description/hashtags) via Groq. */
+export async function generateSeo(jobId: string): Promise<SeoResponse> {
+  const resp = await fetch(`${API_BASE}/api/jobs/${jobId}/seo`, { method: "POST" });
+  if (!resp.ok) throw await parseError(resp);
+  return resp.json();
 }
 
 export async function fetchJob(jobId: string): Promise<JobState> {

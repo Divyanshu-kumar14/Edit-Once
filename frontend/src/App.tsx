@@ -5,7 +5,7 @@ import { ApiError, pollJob, updateVersionOptions, uploadJob } from "./api";
 import { JobProgress } from "./components/JobProgress";
 import { ResultGrid } from "./components/ResultGrid";
 import { UploadDropzone } from "./components/UploadDropzone";
-import type { JobState, PlatformId, VersionOptions } from "./types";
+import type { JobState, PlatformId, SeoPack, VersionOptions } from "./types";
 import { PLATFORM_LABELS, PLATFORM_ORDER } from "./types";
 import AuroraBackground from "./ui/AuroraBackground";
 import { Reveal } from "./ui/Reveal";
@@ -87,6 +87,17 @@ export default function App() {
     setScreen("upload");
   }, []);
 
+  /** SEO packs are persisted server-side; merge them into app state so the
+   * results screen shows them without a full re-poll. */
+  const handleSeoPacks = useCallback(
+    (packs: Partial<Record<PlatformId, SeoPack>>, generatedAt: string) => {
+      setJob((prev) =>
+        prev ? { ...prev, seo_packs: packs, seo_generated_at: generatedAt } : prev,
+      );
+    },
+    [],
+  );
+
   return (
     <MotionConfig reducedMotion="user">
       <AuroraBackground />
@@ -165,7 +176,7 @@ export default function App() {
           )}
           {screen === "running" && job && <JobProgress job={job} />}
           {screen === "results" && job && (
-            <ResultGrid job={job} onRerender={handleRerender} />
+            <ResultGrid job={job} onRerender={handleRerender} onSeoPacks={handleSeoPacks} />
           )}
         </main>
 

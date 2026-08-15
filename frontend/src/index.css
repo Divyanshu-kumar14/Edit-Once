@@ -567,3 +567,111 @@ html, body {
   padding: 0.75rem 1rem;
   margin-bottom: 1.25rem;
 }
+
+/* On-demand Groq SEO packs (title/description/hashtags per platform) */
+.seo-section {
+  margin-top: 2rem;
+}
+.seo-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+.seo-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.15rem;
+}
+.seo-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 1rem 1.25rem;
+}
+.seo-cta .btn.primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.seo-cta code {
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.seo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+.seo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+}
+.seo-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.seo-copy-all {
+  padding: 0.25rem 0.6rem;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.seo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.seo-field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.seo-copy {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 0;
+}
+.seo-copy:hover { text-decoration: underline; }
+.seo-textarea {
+  width: 100%;
+  resize: vertical;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 0.45rem 0.6rem;
+}
+.seo-textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.seo-error {
+  color: #ff6b6b;
+  font-size: 13px;
+  margin: 0;
+  word-break: break-word;
+}

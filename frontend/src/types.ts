@@ -49,6 +49,13 @@ export interface CaptionsInfo {
   cue_count: number;
 }
 
+export interface SeoPack {
+  title: string;
+  description: string;
+  hashtags: string[];
+  error: string | null;
+}
+
 export type JobStatus = "queued" | "transcribing" | "analyzing" | "rendering" | "done" | "failed";
 
 export interface JobState {
@@ -60,6 +67,8 @@ export interface JobState {
   error: string | null;
   captions: CaptionsInfo | null;
   transcribe_progress: number;
+  seo_packs: Partial<Record<PlatformId, SeoPack>>;
+  seo_generated_at: string | null;
 }
 
 export const PLATFORM_ORDER = ["tiktok", "reels", "shorts", "x"] as const;

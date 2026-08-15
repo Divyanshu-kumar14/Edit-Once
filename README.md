@@ -13,6 +13,11 @@ Ready; failed versions surface the renderer stderr instead.
 transcribed locally from the audio (faster-whisper, no API keys); upload an SRT to keep
 full control. Either way, captions are re-rendered from an SRT file — never OCR'd.
 
+**Ready to post? Generate an SEO pack.** Once your versions render, one click asks Groq
+for platform-optimized titles, descriptions, and viral hashtags for all four platforms —
+grounded in what your video actually says (its transcript), editable, and copyable per
+field or as a full pack. Optional: set `EDITONCE_GROQ_API_KEY` in `.env` to enable it.
+
 **The product is a correctness guarantee, not an auto-clipper.** Captions are re-rendered
 from the SRT — never OCR'd. Automation by default; a manual crop-anchor override is the
 only human input (escape hatch, not the workflow).
@@ -129,6 +134,8 @@ specifics (SRT errors name the line).
    re-renders around your anchor. The engine verified every version server-side
    (resolution, ratio, caption safe-zone, audio, duration) before marking it Ready.
 5. Download one. "Automation by default, control when it's wrong."
+6. Optional: hit **Generate SEO pack** — four platform-tuned titles, descriptions and
+   hashtags grounded in the transcript, each editable and one-click copyable.
 
 ## Status
 
@@ -142,6 +149,8 @@ specifics (SRT errors name the line).
       fullscreen 9:16 modal, minimal 4-up results grid (29 commits)
 - [x] M7 AI captions: optional SRT upload → local faster-whisper transcription stage,
       transcribing progress in UI, captions source + SRT download on results
+- [x] M8 SEO packs: on-demand per-platform titles/descriptions/hashtags via Groq,
+      transcript-grounded, editable + copy, cached in state.json (no re-billing)
 - [ ] Batch upload, YouTube upload (priority order)
 
 ## License
