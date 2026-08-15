@@ -52,10 +52,19 @@ class InputInfo(BaseModel):
     resolution: tuple[int, int]  # (width, height) of source
 
 
+class CaptionsInfo(BaseModel):
+    """Provenance of a job's caption file (FR-3.4: re-rendered, never OCR'd)."""
+
+    source: Literal["uploaded", "transcribed"]
+    cue_count: int = 0
+
+
 class JobState(BaseModel):
     job_id: str
-    status: Literal["queued", "analyzing", "rendering", "done", "failed"]
+    status: Literal["queued", "transcribing", "analyzing", "rendering", "done", "failed"]
     created_at: str  # ISO-8601
     input: InputInfo | None = None
     versions: dict[str, VersionState] = {}
     error: str | None = None  # whole-job failure (e.g. analysis crash)
+    captions: CaptionsInfo | None = None  # None only for pre-AI jobs on disk
+    transcribe_progress: int = 0  # 0..100 during the transcribing stage

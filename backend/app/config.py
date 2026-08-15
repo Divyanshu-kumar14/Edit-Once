@@ -40,3 +40,8 @@ FONT_FILENAME = "Inter-SemiBold.ttf"
 
 # --- Frontend ---
 POLL_INTERVAL_S = 2.0  # FR-8.4
+
+# --- Whisper (auto-caption transcription) ---
+WHISPER_MODEL = os.environ.get("EDITONCE_WHISPER_MODEL", "base")
+WHISPER_DEVICE = "cpu"
+WHISPER_COMPUTE_TYPE = "int8"
