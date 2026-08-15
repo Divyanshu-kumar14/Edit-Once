@@ -2,12 +2,16 @@
 
 A platform-correct short-form video repacker for the Social Media Automation Hackathon.
 
-Upload **one** finished short (clean, no burned-in captions) + its SRT caption file.
+Upload **one** finished short (clean, no burned-in captions) + an optional SRT caption file.
 The app re-renders captions into each platform's safe zone, converts any input ratio to
 9:16 @ 1080×1920 with smart anchored cropping (auto face-detected, manual override), and
 shows all four versions in a single-row results grid — play any preview fullscreen or
 download each MP4. Every version is verified against its platform spec before it's marked
 Ready; failed versions surface the renderer stderr instead.
+
+**No SRT? No problem.** Captions are optional — upload a video alone and captions are
+transcribed locally from the audio (faster-whisper, no API keys); upload an SRT to keep
+full control. Either way, captions are re-rendered from an SRT file — never OCR'd.
 
 **The product is a correctness guarantee, not an auto-clipper.** Captions are re-rendered
 from the SRT — never OCR'd. Automation by default; a manual crop-anchor override is the
@@ -39,10 +43,11 @@ bottom margin), Shorts has the right-side rail (largest right margin), X has the
 
 ```mermaid
 flowchart LR
-    U[Upload video + SRT] --> API[FastAPI /api/jobs]
+    U[Upload video + optional SRT] --> API[FastAPI /api/jobs]
     API --> Q[JobManager · 1 worker thread]
     Q --> P[probe · ffprobe]
-    P --> A[analyze · scene crop anchors]
+    P --> T[transcribe · whisper, only when no SRT]
+    T --> A[analyze · scene crop anchors]
     A --> R1[render tiktok]
     A --> R2[render reels]
     A --> R3[render shorts]
@@ -87,12 +92,14 @@ For development: `cd frontend && npm run dev` (Vite on :5173, proxies /api → :
 ## Verify it
 
 ```bash
-cd backend && ../.venv/bin/pytest          # unit + API tests (87% coverage)
+cd backend && ../.venv/bin/pytest          # unit + API tests (89 tests)
 ./scripts/demo.sh                          # scripted E2E: fixture → 4 MP4s → checklist table
 ```
 
 The deterministic fixture (`backend/tests/fixtures/make_fixture.py`) generates a 30 s
 1080×1920 clip with a moving subject + sine audio and an 8-cue SRT — no internet needed.
+Caption transcription uses faster-whisper (`base` model) entirely offline; `scripts/setup.sh`
+pre-downloads it once so the demo never touches the network.
 
 ## The verification checklist (the differentiator)
 
@@ -113,9 +120,11 @@ specifics (SRT errors name the line).
 
 1. "I edit one short for TikTok — then I have to re-edit it for Reels, Shorts, and X. This
    repacks it for all four, correctly."
-2. Upload video + SRT → 4 progress bars.
+2. Upload a video — no SRT needed, captions are transcribed on-device. Watch the
+   transcribing bar fill, then 4 progress bars.
 3. Results: all four versions in a single row, 9:16 previews side by side. Click any
-   preview for the fullscreen player, or hit **Download MP4**.
+   preview for the fullscreen player, or hit **Download MP4**. The captions panel shows
+   what was used (auto-transcribed or your upload) with a one-click SRT download.
 4. Drag any preview (or use the arrow keys) to re-position the crop anchor — that version
    re-renders around your anchor. The engine verified every version server-side
    (resolution, ratio, caption safe-zone, audio, duration) before marking it Ready.
@@ -131,6 +140,8 @@ specifics (SRT errors name the line).
 - [x] M6 professionalism pass: Inter Variable typography, lucide icons, product-voice
       copy, upload hero + platform pills + how-it-works strip, calmer aurora tone,
       fullscreen 9:16 modal, minimal 4-up results grid (29 commits)
+- [x] M7 AI captions: optional SRT upload → local faster-whisper transcription stage,
+      transcribing progress in UI, captions source + SRT download on results
 - [ ] Batch upload, YouTube upload (priority order)
 
 ## License
