@@ -324,7 +324,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
                 initial={{ scale: 0.92, y: 14 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 8 }}
-                transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                transition={{ type: "spring", stiffness: 260, damping: 30 }}
               >
                 <video src={version.download_url} controls autoPlay className="modal-video" />
                 <button className="btn ghost" onClick={() => setPlaying(false)}>

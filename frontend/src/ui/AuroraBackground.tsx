@@ -117,7 +117,7 @@ void main() {
 `;
 
 /** Edit-Once palette: warm orange → teal counterpoint → amber (no purple). */
-const COLOR_STOPS = ["#ff6b35", "#2dd4bf", "#ffb347"];
+const COLOR_STOPS = ["#f2713c", "#34c8b8", "#f5a94a"];
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;

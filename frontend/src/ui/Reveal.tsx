@@ -11,7 +11,7 @@ interface Props {
 }
 
 /** Fade + rise spring entrance. Renders a plain div under reduced motion. */
-export function Reveal({ children, delay = 0, y = 14, className }: Props) {
+export function Reveal({ children, delay = 0, y = 10, className }: Props) {
   const reduce = useReducedMotion();
   if (reduce) return <div className={className}>{children}</div>;
   return (

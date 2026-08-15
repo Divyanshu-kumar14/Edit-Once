@@ -23,12 +23,12 @@ export function Stagger({ children, gap = 0.08, startDelay = 0, className }: Pro
       {Children.map(children, (child, i) => (
         <motion.div
           key={i}
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
             type: "spring",
             stiffness: 240,
-            damping: 24,
+            damping: 28,
             delay: startDelay + i * gap,
           }}
         >
