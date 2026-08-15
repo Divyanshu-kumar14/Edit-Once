@@ -13,6 +13,23 @@
   --bad: #f87171;
   --radius: 10px;
   --font: "Inter", "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Glass system (liquid-glass panels over the aurora). */
+  --glass-bg: rgba(19, 23, 34, 0.55);
+  --glass-bg-strong: rgba(19, 23, 34, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 16px;
+  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 40%, transparent);
+
+  /* Platform brand accents (user-approved; Reels purple is intentional). */
+  --plat-tiktok: #25f4ee;
+  --plat-reels-a: #e1306c;
+  --plat-reels-b: #833ab4;
+  --plat-shorts: #ff0033;
+  --plat-x: #e7e9ea;
+
+  --shine: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.14) 50%, transparent 80%);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 * { box-sizing: border-box; }
@@ -38,7 +55,86 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-.app { max-width: 1280px; margin: 0 auto; padding: 24px 20px 64px; }
+.app { max-width: 1280px; margin: 0 auto; padding: 0 20px 64px; position: relative; z-index: 2; }
+
+/* --- aurora background layers ------------------------------------------- */
+/* WebGL aurora canvas (rendered by src/ui/AuroraBackground.tsx). */
+.aurora-bg {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.aurora-bg canvas { width: 100%; height: 100%; display: block; }
+/* Dark vignette on top of the shader so text keeps contrast at the edges. */
+.aurora-vignette {
+  position: fixed; inset: 0; z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 35%, transparent 52%, rgba(11, 14, 20, 0.6) 100%),
+    linear-gradient(rgba(11, 14, 20, 0.35), transparent 28%, transparent 72%, rgba(11, 14, 20, 0.45));
+}
+/* CSS-only fallback when WebGL2 is unavailable (or motion is reduced). */
+.aurora-fallback {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 28% 30%, rgba(255, 107, 53, 0.22), transparent 70%),
+    radial-gradient(50% 42% at 78% 68%, rgba(45, 212, 191, 0.16), transparent 70%),
+    radial-gradient(42% 40% at 55% 12%, rgba(255, 179, 71, 0.14), transparent 70%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .aurora-fallback { animation: aurora-drift 18s ease-in-out infinite alternate; }
+}
+@keyframes aurora-drift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to { transform: translate3d(2%, 1.5%, 0) scale(1.08); }
+}
+
+/* --- glass utilities ------------------------------------------------------ */
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+}
+.glass::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: var(--glass-highlight);
+  pointer-events: none;
+}
+.gradient-text {
+  background: linear-gradient(100deg, #ff6b35, #ffb347 55%, #2dd4bf);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* Light sweep that crosses a still/card once (position driven by Shine.tsx). */
+.shine-sweep {
+  position: absolute; top: 0; bottom: 0;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  transform: skewX(-15deg);
+  pointer-events: none;
+  will-change: transform;
+}
+/* Small brand-color dot next to a platform name. */
+.plat-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--plat, var(--accent));
+  box-shadow: 0 0 10px var(--plat, var(--accent));
+  flex: none;
+}
+/* Radial brand-color wash at the top of a platform card. */
+.plat-wash {
+  position: absolute; inset: -16px -16px auto;
+  height: 96px;
+  background: radial-gradient(80% 100% at 50% 0%, color-mix(in srgb, var(--plat, var(--accent)) 16%, transparent), transparent 72%);
+  pointer-events: none;
+}
 
 .header {
   display: flex;
