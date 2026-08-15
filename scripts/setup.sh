@@ -23,25 +23,37 @@ if ! ffmpeg -filters 2>/dev/null | grep -q "subtitles"; then
 fi
 echo "    ffmpeg OK ($(ffmpeg -version | head -1 | cut -d' ' -f3)) + libass OK"
 
-echo "==> [2/5] Python venv + packages"
+echo "==> [2/6] Python venv + packages"
 python3 -m venv .venv
 .venv/bin/pip install --quiet --upgrade pip
 .venv/bin/pip install --quiet -r backend/requirements.txt
 
-echo "==> [3/5] Bundled font"
+echo "==> [3/6] Bundled font"
 if [ ! -f backend/fonts/Inter-SemiBold.ttf ]; then
   echo "    ERROR: backend/fonts/Inter-SemiBold.ttf missing (must be committed)." >&2
   exit 1
 fi
 
-echo "==> [4/5] Frontend deps + build"
+echo "==> [4/6] Frontend deps + build"
 cd frontend
 npm install --no-audit --no-fund
 npm run build
 cd "$ROOT"
 
-echo "==> [5/5] Fixtures (deterministic, offline)"
+echo "==> [5/6] Fixtures (deterministic, offline)"
 .venv/bin/python backend/tests/fixtures/make_fixture.py --outdir backend/tests/fixtures
+
+echo "==> [6/6] Whisper caption model (auto-captioning; best-effort)"
+if ! .venv/bin/python -c "import faster_whisper" 2>/dev/null; then
+  echo "    WARNING: faster-whisper unavailable — video-only uploads will ask for an SRT."
+else
+  echo "    Downloading the caption model (one-time, ~150 MB)..."
+  .venv/bin/python - <<'PY'
+from faster_whisper import WhisperModel
+WhisperModel("base", device="cpu", compute_type="int8")
+print("    Caption model ready.")
+PY
+fi
 
 echo
 echo "Setup complete. Run:  scripts/run.sh   →  http://localhost:8000"
