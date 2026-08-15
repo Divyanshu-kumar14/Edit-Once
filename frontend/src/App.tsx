@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { MotionConfig } from "motion/react";
 import { ApiError, pollJob, updateVersionOptions, uploadJob } from "./api";
 import { JobProgress } from "./components/JobProgress";
 import { ResultGrid } from "./components/ResultGrid";
@@ -84,7 +85,7 @@ export default function App() {
   }, []);
 
   return (
-    <div>
+    <MotionConfig reducedMotion="user">
       <AuroraBackground />
       <div className="app">
         <Reveal y={-10}>
@@ -123,6 +124,6 @@ export default function App() {
           each platform's safe zone — your source must be caption-free.
         </footer>
       </div>
-    </div>
+    </MotionConfig>
   );
 }

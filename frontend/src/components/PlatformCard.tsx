@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import type { PlatformId, VersionOptions, VersionState } from "../types";
 import { Checklist } from "./Checklist";
 import { SafeZoneOverlay } from "./SafeZoneOverlay";
+import { Shine } from "../ui/Shine";
 
 interface Props {
   label: string;
@@ -46,7 +48,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
 
   if (version.status === "failed") {
     return (
-      <article className="card failed">
+      <article className="card failed" data-platform={platform}>
         <h3>{label}</h3>
         <div className="error-banner">Render failed</div>
         <pre className="stderr">{version.error}</pre>
@@ -156,7 +158,8 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
   if (version.status === "queued" || version.status === "rendering") {
     const pct = Math.round(version.progress);
     return (
-      <article className="card">
+      <article className="card" data-platform={platform}>
+        <div className="plat-wash" aria-hidden="true" />
         <header className="card-head">
           <h3>{label}</h3>
           <span className={`badge ${version.status}`}>{version.status}</span>
@@ -183,9 +186,13 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
   }
 
   return (
-    <article className="card">
+    <article className="card" data-platform={platform}>
+      <div className="plat-wash" aria-hidden="true" />
       <header className="card-head">
-        <h3>{label}</h3>
+        <h3>
+          <span className="plat-dot" aria-hidden="true" />
+          {label}
+        </h3>
         <span className={`badge ${version.status}`}>{version.status}</span>
       </header>
 
@@ -211,6 +218,8 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
             />
+            {/* One light sweep across the preview once it has loaded. */}
+            {imgLoaded && <Shine delay={0.3} />}
             {croppable && version.anchor_override && (
               <span
                 className="anchor-marker static"
@@ -295,22 +304,34 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
         )}
       </footer>
 
-      {playing && version.download_url && (
-        <div
-          className="modal"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${label} rendered video`}
-          onClick={() => setPlaying(false)}
-        >
-          <div className="modal-body" onClick={(e) => e.stopPropagation()}>
-            <video src={version.download_url} controls autoPlay className="modal-video" />
-            <button className="btn ghost" onClick={() => setPlaying(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {playing && version.download_url && (
+          <motion.div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${label} rendered video`}
+            onClick={() => setPlaying(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="modal-body"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.92, y: 14 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 8 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            >
+              <video src={version.download_url} controls autoPlay className="modal-video" />
+              <button className="btn ghost" onClick={() => setPlaying(false)}>
+                Close
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </article>
   );
 }

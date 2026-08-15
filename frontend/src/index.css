@@ -113,7 +113,7 @@ html, body {
 }
 /* Light sweep that crosses a still/card once (position driven by Shine.tsx). */
 .shine-sweep {
-  position: absolute; top: 0; bottom: 0;
+  position: absolute; top: 0; bottom: 0; left: 0;
   width: 45%;
   background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.12), transparent);
   transform: skewX(-15deg);
@@ -356,16 +356,37 @@ html, body {
 .grid > div { min-width: 0; display: flex; }
 .grid > div > .card { flex: 1; }
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   padding: 16px;
   display: flex; flex-direction: column; gap: 12px;
-  transition: transform 0.18s ease, border-color 0.18s ease;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s var(--ease-spring), border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.card:hover { transform: translateY(-2px); border-color: #2e3750; }
-.card-head { display: flex; align-items: center; justify-content: space-between; }
-.card-head h3 { margin: 0; font-size: 16px; }
+/* Top-edge light, same treatment as every glass panel. */
+.card::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--glass-highlight);
+  pointer-events: none;
+  border-radius: inherit;
+}
+/* Brand accents per platform (user-approved; Reels purple is its brand color). */
+.card[data-platform="tiktok"] { --plat: var(--plat-tiktok); }
+.card[data-platform="reels"] { --plat: var(--plat-reels-a); }
+.card[data-platform="shorts"] { --plat: var(--plat-shorts); }
+.card[data-platform="x"] { --plat: var(--plat-x); }
+.card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--plat, var(--accent)) 45%, var(--glass-border));
+  box-shadow: 0 16px 48px -16px color-mix(in srgb, var(--plat, var(--accent)) 28%, transparent);
+}
+.card-head { display: flex; align-items: center; justify-content: space-between; position: relative; }
+.card-head h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
 .card.failed .error-banner { margin: 0; }
 .stderr {
   font-size: 11px; color: #fecaca;
@@ -488,15 +509,22 @@ html, body {
 /* --- modal ------------------------------------------------------------------- */
 .modal {
   position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(8, 10, 15, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: grid; place-items: center;
   z-index: 50;
   padding: 24px;
-  animation: fade-in 0.2s ease;
 }
-@keyframes fade-in { from { opacity: 0; } }
-.modal-body { display: flex; flex-direction: column; gap: 12px; align-items: center; }
-.modal-video { max-height: 82vh; max-width: 92vw; border-radius: 10px; }
+.modal-body {
+  display: flex; flex-direction: column; gap: 12px; align-items: center;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+.modal-video { max-height: 82vh; max-width: 92vw; border-radius: 12px; }
 
 /* Respect users who prefer reduced motion: drop shimmer/hover animations. */
 @media (prefers-reduced-motion: reduce) {
