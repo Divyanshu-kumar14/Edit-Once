@@ -242,7 +242,13 @@ def wrap_text(text: str, max_units: int, max_lines: int) -> tuple[list[str], boo
     if truncated:
         lines = lines[:max_lines]
         last = lines[-1]
-        while text_units(last) + 1 > max_units and last:
+        # O(n) instead of O(n²): the naive "while text_units(last)+1 > cap"
+        # re-scans the whole line (O(L)) and re-copies last[:-1] (O(L)) per
+        # dropped char. Track the unit count incrementally instead — each
+        # char's weight is decided in O(1), so truncation is one pass.
+        units = text_units(last)
+        while last and units + 1 > max_units:
+            units -= 2 if ord(last[-1]) > 0x2E80 else 1
             last = last[:-1]
         lines[-1] = last + "…"
     return lines, truncated

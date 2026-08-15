@@ -7,6 +7,7 @@ import json
 import queue
 import shutil
 import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -404,10 +405,24 @@ class JobManager:
             self._persist(state)
 
 
+# Memoized with a 30s TTL: every ffmpeg_available() call spawns TWO
+# subprocesses (~50-100ms). The health endpoint is hit on every page load
+# and the SEO section re-checks it — the binary's presence and filter set
+# cannot change mid-process, so a cached result is always correct; the TTL
+# only guards against pathological environments (package manager upgrades).
+_ffmpeg_check: tuple[float, tuple[str | None, bool]] | None = None
+_FFMPEG_TTL_S = 30.0
+
+
 def ffmpeg_available() -> tuple[str | None, bool]:
     """Return (ffmpeg version string | None, libass subtitles filter present)."""
+    global _ffmpeg_check
+    now = time.monotonic()
+    if _ffmpeg_check is not None and now - _ffmpeg_check[0] < _FFMPEG_TTL_S:
+        return _ffmpeg_check[1]  # O(1) cache hit — skip the subprocess spawn
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is None:
+        _ffmpeg_check = (now, (None, False))
         return None, False
     try:
         version = shutil.os.popen(f"{ffmpeg} -version").read().splitlines()[0].split()[2]
@@ -415,6 +430,8 @@ def ffmpeg_available() -> tuple[str | None, bool]:
         version = "unknown"
     try:
         filters = shutil.os.popen(f"{ffmpeg} -filters").read()
-        return version, "subtitles" in filters
+        result = (version, "subtitles" in filters)
     except Exception:
-        return version, False
+        result = (version, False)
+    _ffmpeg_check = (now, result)
+    return result
