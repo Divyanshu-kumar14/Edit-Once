@@ -293,11 +293,30 @@ html, body {
 .progress h2, .results h2 { font-size: 22px; margin: 0 0 6px; }
 .progress-grid { display: flex; flex-direction: column; gap: 14px; margin-top: 28px; }
 .progress-row { display: flex; align-items: center; gap: 14px; }
+/* The actively-rendering platform gets a soft glow — calm, not frantic. */
+.progress-row.active .bar { box-shadow: 0 0 14px rgba(255, 107, 53, 0.25); }
 .progress-name { width: 150px; font-weight: 600; font-size: 14px; }
 .bar { flex: 1; height: 14px; background: var(--surface-2); border-radius: 7px; overflow: hidden; }
-.bar-fill { height: 100%; background: var(--accent); border-radius: 7px; transition: width 0.6s ease; }
-.bar-fill.done { background: var(--ok); }
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6b35, #ffb347);
+  border-radius: 7px;
+  transition: width 0.6s ease;
+  position: relative;
+  overflow: hidden;
+}
+/* Slow sheen rolling down the active bar. */
+.bar-fill::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: translateX(-100%);
+  animation: bar-sheen 1.8s ease-in-out infinite;
+}
+@keyframes bar-sheen { 100% { transform: translateX(100%); } }
+.bar-fill.done { background: linear-gradient(90deg, #10b981, #34d399); }
 .bar-fill.failed { background: var(--bad); }
+.bar-fill.done::after, .bar-fill.failed::after { display: none; }
 .bar-skeleton { height: 14px; border-radius: 7px; flex: 1; }
 
 /* --- badges --------------------------------------------------------------- */
@@ -313,6 +332,9 @@ html, body {
 .badge.pass, .badge.done { color: #052e1f; background: var(--ok); border-color: var(--ok); }
 .badge.warn, .badge.rendering { color: #3b2a05; background: var(--warn); border-color: var(--warn); }
 .badge.fail, .badge.failed { color: #3f0d0d; background: var(--bad); border-color: var(--bad); }
+/* State transition pop (rendering → done/failed). */
+.badge.done, .badge.failed { animation: badge-pop 0.3s var(--ease-spring); }
+@keyframes badge-pop { from { transform: scale(0.6); } }
 
 /* --- results grid ---------------------------------------------------------- */
 .grid {
