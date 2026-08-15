@@ -4,9 +4,10 @@ A platform-correct short-form video repacker for the Social Media Automation Hac
 
 Upload **one** finished short (clean, no burned-in captions) + its SRT caption file.
 The app re-renders captions into each platform's safe zone, converts any input ratio to
-9:16 @ 1080×1920 with smart-ish anchored cropping, and shows a side-by-side results grid
-with a **PASS/FAIL rule checklist proving each version is platform-correct**. Downloads of
-each MP4.
+9:16 @ 1080×1920 with smart anchored cropping (auto face-detected, manual override), and
+shows all four versions in a single-row results grid — play any preview fullscreen or
+download each MP4. Every version is verified against its platform spec before it's marked
+Ready; failed versions surface the renderer stderr instead.
 
 **The product is a correctness guarantee, not an auto-clipper.** Captions are re-rendered
 from the SRT — never OCR'd. Automation by default; a manual crop-anchor override is the
@@ -58,7 +59,9 @@ flowchart LR
 
 - **Backend** — Python 3.11+ / FastAPI, ffmpeg (libass) + OpenCV as subprocesses, no
   database, no external APIs (fully offline demo).
-- **Frontend** — Vite + React + TypeScript, dark video-first design, hand-rolled design tokens.
+- **Frontend** — Vite + React + TypeScript, dark aurora-glass design (hand-rolled tokens,
+  Inter Variable, lucide icons), Framer Motion primitives (`Reveal`, `Stagger`, `Shine`),
+  fullscreen 9:16 video modal, responsive 4-up results grid.
 - **Pipeline** — `probe → analyze → render → verify → stills`, one render at a time
   globally, per-version state persisted to `data/jobs/{id}/state.json`.
 
@@ -93,6 +96,11 @@ The deterministic fixture (`backend/tests/fixtures/make_fixture.py`) generates a
 
 ## The verification checklist (the differentiator)
 
+Verification runs in the engine after every render; a version only shows as Ready once its
+checks pass. A failed platform render never fails the job — that platform's card shows a
+collapsible stderr tail while the others continue. Every error surfaces in the UI with
+specifics (SRT errors name the line).
+
 | Check | PASS | WARN | FAIL |
 |---|---|---|---|
 | resolution | exactly 1080×1920 | ≥ 720×1280 | below min |
@@ -101,18 +109,16 @@ The deterministic fixture (`backend/tests/fixtures/make_fixture.py`) generates a
 | audio | stream present | — | no audio in source |
 | duration | ≤ platform limit | exceeds limit (shows number) | — |
 
-A failed platform render never fails the job — that platform shows the stderr tail while the
-others continue. Every error surfaces in the UI with specifics (SRT errors name the line).
-
 ## Demo script (2–4 min submission)
 
 1. "I edit one short for TikTok — then I have to re-edit it for Reels, Shorts, and X. This
    repacks it for all four, correctly."
 2. Upload video + SRT → 4 progress bars.
-3. Results: 4 versions side by side; toggle the safe-zone overlay — TikTok low, Reels
-   raised (~230 px), Shorts clear of the right rail.
-4. Checklist: all PASS. The repositioning is *visible* (pixel-verified: Reels captions sit
-   230 px higher than TikTok's).
+3. Results: all four versions in a single row, 9:16 previews side by side. Click any
+   preview for the fullscreen player, or hit **Download MP4**.
+4. Drag any preview (or use the arrow keys) to re-position the crop anchor — that version
+   re-renders around your anchor. The engine verified every version server-side
+   (resolution, ratio, caption safe-zone, audio, duration) before marking it Ready.
 5. Download one. "Automation by default, control when it's wrong."
 
 ## Status
@@ -121,7 +127,11 @@ others continue. Every error surfaces in the UI with specifics (SRT errors name 
 - [x] M2 single-platform render (ASS → ffmpeg → verify)
 - [x] M3 all 4 platforms + stills + downloads + checklists
 - [x] M4 frontend + setup/run/demo scripts (E2E green)
-- [ ] Day 2: face anchor, manual crop override, blur-pad, batch, YouTube upload (priority order)
+- [x] M5 face anchors, manual crop override, blur-pad fit (FR-4.3)
+- [x] M6 professionalism pass: Inter Variable typography, lucide icons, product-voice
+      copy, upload hero + platform pills + how-it-works strip, calmer aurora tone,
+      fullscreen 9:16 modal, minimal 4-up results grid (29 commits)
+- [ ] Batch upload, YouTube upload (priority order)
 
 ## License
 
