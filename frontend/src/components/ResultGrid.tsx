@@ -6,6 +6,9 @@ import {
   type VersionOptions,
 } from "../types";
 import { PlatformCard } from "./PlatformCard";
+import { CountUp } from "../ui/CountUp";
+import { Reveal } from "../ui/Reveal";
+import { Stagger } from "../ui/Stagger";
 
 interface Props {
   job: JobState;
@@ -13,14 +16,31 @@ interface Props {
 }
 
 export function ResultGrid({ job, onRerender }: Props) {
+  const versionsDone = PLATFORM_ORDER.filter(
+    (pid) => job.versions[pid].status === "done",
+  ).length;
+  const checks = PLATFORM_ORDER.flatMap((pid) => job.versions[pid].checks);
+  const checksPassed = checks.filter((c) => c.result === "pass").length;
+
   return (
     <section className="results">
-      <h2>4 platform-correct versions</h2>
-      <p className="muted">
-        {job.input?.filename} · {(job.input?.duration_s ?? 0).toFixed(1)} s ·{" "}
-        {job.input?.resolution[0]}×{job.input?.resolution[1]} source
-      </p>
-      <div className="grid">
+      <Reveal>
+        <div className="summary-chip glass" aria-live="polite">
+          <span className="summary-count">
+            <CountUp value={versionsDone} /> / {PLATFORM_ORDER.length} versions
+          </span>
+          <span className="summary-sep" aria-hidden="true">·</span>
+          <span className="summary-checks">
+            <CountUp value={checksPassed} /> / {checks.length} checks PASS
+          </span>
+        </div>
+        <h2>4 platform-correct versions</h2>
+        <p className="muted">
+          {job.input?.filename} · {(job.input?.duration_s ?? 0).toFixed(1)} s ·{" "}
+          {job.input?.resolution[0]}×{job.input?.resolution[1]} source
+        </p>
+      </Reveal>
+      <Stagger gap={0.09} startDelay={0.15} className="grid">
         {PLATFORM_ORDER.map((pid) => (
           <PlatformCard
             key={pid}
@@ -30,7 +50,7 @@ export function ResultGrid({ job, onRerender }: Props) {
             onRerender={onRerender}
           />
         ))}
-      </div>
+      </Stagger>
     </section>
   );
 }
