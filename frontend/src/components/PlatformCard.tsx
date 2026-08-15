@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
+import { Play, Download, Copy, X } from "lucide-react";
 import type { PlatformId, VersionOptions, VersionState } from "../types";
+import { STATUS_LABEL } from "../types";
 import { Checklist } from "./Checklist";
 import { SafeZoneOverlay } from "./SafeZoneOverlay";
 import { Shine } from "../ui/Shine";
@@ -51,8 +53,11 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
     return (
       <article className="card failed" data-platform={platform}>
         <h3>{label}</h3>
-        <div className="error-banner">Render failed</div>
-        <pre className="stderr">{version.error}</pre>
+        <div className="error-banner">This version failed to render</div>
+        <details className="stderr-details">
+          <summary>Technical details</summary>
+          <pre className="stderr">{version.error}</pre>
+        </details>
       </article>
     );
   }
@@ -163,7 +168,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
         <div className="plat-wash" aria-hidden="true" />
         <header className="card-head">
           <h3>{label}</h3>
-          <span className={`badge ${version.status}`}>{version.status}</span>
+          <span className={`badge ${version.status}`}>{STATUS_LABEL[version.status]}</span>
         </header>
         <div className="card-render">
           <div className="skeleton still-skeleton" aria-hidden="true" />
@@ -194,7 +199,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
           <span className="plat-dot" aria-hidden="true" />
           {label}
         </h3>
-        <span className={`badge ${version.status}`}>{version.status}</span>
+        <span className={`badge ${version.status}`}>{STATUS_LABEL[version.status]}</span>
       </header>
 
       {still ? (
@@ -242,7 +247,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
           {overlay && spec && <SafeZoneOverlay margins={spec.margins} label={label} />}
           <div className="still-actions">
             <button className="btn tiny" onClick={() => setPlaying(true)}>
-              ▶ Play
+              <Play size={14} fill="currentColor" aria-hidden="true" /> Play
             </button>
             {spec && (
               <button
@@ -250,7 +255,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
                 aria-pressed={overlay}
                 onClick={() => setOverlay((o) => !o)}
               >
-                {overlay ? "Hide" : "Show"} safe zone
+                {overlay ? "Hide safe areas" : "Show safe areas"}
               </button>
             )}
           </div>
@@ -280,13 +285,13 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
             aria-pressed={version.fit === "blur"}
             onClick={() => onRerender(platform, { fit: "blur", anchor: version.anchor_override })}
           >
-            Blur-pad
+            Blur fill
           </button>
         </div>
         <p className="muted fit-hint">
           {version.fit === "crop"
             ? "Drag the preview to set the crop anchor"
-            : "Blur-pad letterbox — no crop anchor"}
+            : "Letterboxes with a blurred background"}
         </p>
       </div>
 
@@ -295,12 +300,12 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
       <footer className="card-foot">
         {version.download_url && (
           <a className="btn primary" href={version.download_url} download>
-            ↓ Download MP4
+            <Download size={14} aria-hidden="true" /> Download MP4
           </a>
         )}
         {spec && (
           <button className="btn ghost" onClick={copySpec}>
-            Copy spec
+            <Copy size={14} aria-hidden="true" /> Copy details
           </button>
         )}
       </footer>
@@ -328,7 +333,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
               >
                 <video src={version.download_url} controls autoPlay className="modal-video" />
                 <button className="btn ghost" onClick={() => setPlaying(false)}>
-                  Close
+                  <X size={14} aria-hidden="true" /> Close
                 </button>
               </motion.div>
             </motion.div>

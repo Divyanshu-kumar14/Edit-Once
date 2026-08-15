@@ -62,3 +62,18 @@ export const PLATFORM_LABELS: Record<PlatformId, string> = {
   shorts: "YouTube Shorts",
   x: "X",
 };
+
+/** Display labels for version/job status — product voice, not dev-speak. */
+export const STATUS_LABEL: Record<VersionStatus, string> = {
+  queued: "Queued",
+  rendering: "Processing",
+  done: "Ready",
+  failed: "Failed",
+};
+
+/** Display labels for verification check results. */
+export const RESULT_LABEL: Record<CheckLevel, string> = {
+  pass: "Passed",
+  warn: "Review",
+  fail: "Failed",
+};

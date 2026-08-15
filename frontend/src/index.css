@@ -399,6 +399,9 @@ html, body {
 .card-head { display: flex; align-items: center; justify-content: space-between; position: relative; }
 .card-head h3 { margin: 0; font-size: var(--fs-h3); font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .card.failed .error-banner { margin: 0; }
+.stderr-details { margin-top: 12px; }
+.stderr-details summary { cursor: pointer; font-size: 12px; color: var(--muted); user-select: none; }
+.stderr-details[open] summary { margin-bottom: 8px; }
 .stderr {
   font-size: 11px; color: #fecaca;
   background: #1a1010;

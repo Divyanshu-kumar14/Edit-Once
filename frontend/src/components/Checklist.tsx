@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import type { CheckResult } from "../types";
+import { RESULT_LABEL } from "../types";
 
 const LEVEL_CLASS: Record<string, string> = {
   pass: "pass",
@@ -20,7 +21,7 @@ export function Checklist({ checks }: { checks: CheckResult[] }) {
           transition={{ type: "spring", stiffness: 260, damping: 26, delay: 0.05 * i }}
         >
           <span className={`badge ${LEVEL_CLASS[check.result] ?? "fail"}`}>
-            {check.result.toUpperCase()}
+            {RESULT_LABEL[check.result]}
           </span>
           <span className="check-name">{check.name.replace("_", " ")}</span>
           <span className="check-detail muted" title={check.detail}>
