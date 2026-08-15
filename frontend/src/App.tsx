@@ -36,7 +36,7 @@ export default function App() {
     } catch (err) {
       if (abort.signal.aborted) return; // superseded by a newer poll
       const message =
-        err instanceof ApiError ? err.message : "Network error — is the server running?";
+        err instanceof ApiError ? err.message : "We couldn't reach the render server. Check your connection and try again.";
       setError(message);
       setScreen("upload");
     } finally {
@@ -53,7 +53,7 @@ export default function App() {
         await startPolling(job_id, "running");
       } catch (err) {
         const message =
-          err instanceof ApiError ? err.message : "Network error — is the server running?";
+          err instanceof ApiError ? err.message : "We couldn't reach the render server. Check your connection and try again.";
         setError(message);
         setScreen("upload");
       }
@@ -170,8 +170,8 @@ export default function App() {
         </main>
 
         <footer className="footer">
-          Upload one clean edit + SRT → 4 platform-correct MP4s. Captions are re-rendered into
-          each platform's safe zone — your source must be caption-free.
+          One source edit, four platform-correct videos — captions re-rendered into each
+          platform's safe zone. Built for creators who post everywhere.
         </footer>
       </div>
     </MotionConfig>
