@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .models import JobState, VersionOptions
+from .pipeline import transcriber
 from .pipeline.ass import SrtParseError, parse_captions
 from .pipeline.probe import ProbeError, probe
 from .queue import JobManager, ffmpeg_available
@@ -57,6 +58,7 @@ def health() -> dict[str, object]:
         "ffmpeg": version,
         "libass": libass,
         "fonts": fonts_ok,
+        "whisper": transcriber.stack_available(),
     }
 
 
@@ -178,6 +180,22 @@ def download_version(job_id: str, platform: str) -> FileResponse:
         media_type="video/mp4",
         filename=f"{job_id[:8]}_{platform}.mp4",
         headers={"Content-Disposition": "attachment"},
+    )
+
+
+@app.get("/api/jobs/{job_id}/captions")
+def download_captions(job_id: str) -> FileResponse:
+    """Serve the job's caption file (uploaded or auto-transcribed) as captions.srt."""
+    state = manager.get(job_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    path = manager.job_path(job_id) / "in.srt"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Captions not available yet")
+    return FileResponse(
+        path,
+        media_type="application/x-subrip",
+        filename="captions.srt",
     )
 
 

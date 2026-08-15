@@ -309,3 +309,33 @@ def test_video_only_transcription_failure_fails_job(client, monkeypatch) -> None
     body = _poll_done(client, resp.json()["job_id"])
     assert body["status"] == "failed"
     assert "No speech detected" in body["error"]
+
+
+# --- captions endpoint + health (copy-out escape hatch) ------------------------
+
+def test_upload_with_srt_reports_uploaded_captions(client) -> None:
+    resp = _upload_fixture(client)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["captions"] == "uploaded"
+    assert resp.json()["cues"] == 1  # short fixture.srt has 1 cue
+
+
+def test_captions_endpoint_serves_srt(client) -> None:
+    resp = _upload_fixture(client)
+    job_id = resp.json()["job_id"]
+    _poll_done(client, job_id)
+
+    dl = client.get(f"/api/jobs/{job_id}/captions")
+    assert dl.status_code == 200
+    assert dl.headers["content-disposition"].startswith("attachment")
+    assert "captions.srt" in dl.headers["content-disposition"]
+    assert b"-->" in dl.content  # real SRT content
+
+
+def test_captions_endpoint_unknown_job_404(client) -> None:
+    assert client.get("/api/jobs/nope/captions").status_code == 404
+
+
+def test_health_reports_whisper(client) -> None:
+    body = client.get("/api/health").json()
+    assert "whisper" in body
