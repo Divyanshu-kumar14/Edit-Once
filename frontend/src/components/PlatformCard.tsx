@@ -185,7 +185,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
             </div>
             <span className="pct">{pct}%</span>
           </div>
-          <p className="muted">Rendering…</p>
+          <p className="muted">Processing…</p>
         </div>
       </article>
     );
