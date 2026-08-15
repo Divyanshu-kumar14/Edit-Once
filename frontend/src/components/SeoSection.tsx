@@ -4,32 +4,12 @@ import { ApiError, generateSeo } from "../api";
 import type { JobState, PlatformId, SeoPack } from "../types";
 import { PLATFORM_LABELS, PLATFORM_ORDER } from "../types";
 import { Reveal } from "../ui/Reveal";
+import { copy, useCopied } from "../ui/clipboard";
 
 interface Props {
   job: JobState;
   /** Server-side packs were persisted; merge them into app state. */
   onPacks: (packs: Partial<Record<PlatformId, SeoPack>>, generatedAt: string) => void;
-}
-
-const copy = async (text: string): Promise<boolean> => {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-function useCopied(resetMs = 1500): [string | null, (key: string) => void] {
-  const [copied, setCopied] = useState<string | null>(null);
-  const flash = useCallback(
-    (key: string) => {
-      setCopied(key);
-      setTimeout(() => setCopied((c) => (c === key ? null : c)), resetMs);
-    },
-    [resetMs],
-  );
-  return [copied, flash];
 }
 
 function copyAllText(pack: SeoPack): string {
