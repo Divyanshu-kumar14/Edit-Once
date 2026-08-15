@@ -547,3 +547,13 @@ html, body {
   .dropzone { padding: 32px 16px; }
   .grid { grid-template-columns: 1fr; }
 }
+/* AI caption transcription phase (progress screen) */
+.progress-row.caption-row {
+  margin-bottom: 0.5rem;
+}
+.bar-fill.transcribing {
+  background: linear-gradient(90deg, var(--accent), #ff8f5e);
+}
+.badge.transcribing {
+  color: var(--accent);
+}

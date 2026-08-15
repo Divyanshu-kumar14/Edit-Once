@@ -45,7 +45,7 @@ export default function App() {
   }, []);
 
   const handleUpload = useCallback(
-    async (video: File, srt: File) => {
+    async (video: File, srt: File | null) => {
       setError(null);
       try {
         const { job_id } = await uploadJob(video, srt);

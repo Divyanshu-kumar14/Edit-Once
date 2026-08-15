@@ -4,8 +4,14 @@ import { Reveal } from "../ui/Reveal";
 import { Stagger } from "../ui/Stagger";
 
 export function JobProgress({ job }: { job: JobState }) {
-  const phase = job.status === "analyzing" ? "Analyzing scene crop anchors…" : "Rendering your video…";
+  const transcribing = job.status === "transcribing";
   const analyzing = job.status === "analyzing";
+  const phase = transcribing
+    ? "Transcribing captions from your audio…"
+    : analyzing
+      ? "Analyzing scene crop anchors…"
+      : "Rendering your video…";
+  const busy = transcribing || analyzing; // skeletons while pre-render stages run
 
   return (
     <section className="progress" aria-live="polite">
@@ -16,6 +22,22 @@ export function JobProgress({ job }: { job: JobState }) {
           time — this takes a minute or two.
         </p>
       </Reveal>
+      {transcribing && (
+        <div className="progress-row caption-row active" aria-live="polite">
+          <span className="progress-name">Captions · auto-transcribed</span>
+          <div
+            className="bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={job.transcribe_progress}
+            aria-label="Caption transcription progress"
+          >
+            <div className="bar-fill transcribing" style={{ width: `${job.transcribe_progress}%` }} />
+          </div>
+          <span className="badge transcribing">{job.transcribe_progress}%</span>
+        </div>
+      )}
       <Stagger gap={0.07} startDelay={0.1} className="progress-grid">
         {PLATFORM_ORDER.map((pid) => {
           const v = job.versions[pid];
@@ -25,8 +47,8 @@ export function JobProgress({ job }: { job: JobState }) {
           return (
             <div className={`progress-row${active ? " active" : ""}`} key={pid}>
               <span className="progress-name">{PLATFORM_LABELS[pid]}</span>
-              {analyzing ? (
-                // Skeleton while probing: no real progress to show yet.
+              {busy ? (
+                // Skeleton while probing/transcribing: no real progress to show yet.
                 <div className="skeleton bar-skeleton" />
               ) : (
                 <div

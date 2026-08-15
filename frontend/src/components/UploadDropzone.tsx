@@ -4,7 +4,7 @@ import { CountUp } from "../ui/CountUp";
 import { Reveal } from "../ui/Reveal";
 
 interface Props {
-  onSubmit: (video: File, srt: File) => void;
+  onSubmit: (video: File, srt: File | null) => void;
 }
 
 function countCues(srt: string): { count: number; preview: string } {
@@ -53,20 +53,20 @@ export function UploadDropzone({ onSubmit }: Props) {
     }
   }, [video, srt]);
 
-  const canSubmit = video !== null && srt !== null;
+  const canSubmit = video !== null;
 
   return (
     <Reveal>
       <section
         className={`dropzone glass ${dragging ? "dragging" : ""}`}
-        aria-label="Upload area: drop or pick an MP4 video and an SRT caption file"
+        aria-label="Upload area: drop or pick an MP4 video (captions optional)"
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); handleDrop(e.dataTransfer.files); }}
       >
-      <h2>Upload your video and captions</h2>
+      <h2>Upload your video — captions optional</h2>
       <p className="muted">
-        Upload your MP4 and caption file — we re-render captions into each platform's safe zone.
+        Drop an MP4 (and a caption file if you have one). No SRT? We transcribe your captions automatically.
       </p>
 
       <div className="file-row">
@@ -93,9 +93,9 @@ export function UploadDropzone({ onSubmit }: Props) {
             aria-label="Choose SRT or VTT caption file"
             onChange={(e) => selectSrt(e.target.files?.[0] ?? null)}
           />
-          <span className="file-label"><Captions size={14} aria-hidden="true" /> Caption file</span>
+          <span className="file-label"><Captions size={14} aria-hidden="true" /> Caption file (optional)</span>
           <span className={srt ? "file-name" : "muted"}>
-            {srt ? `${srt.name}` : "SRT or VTT"}
+            {srt ? `${srt.name}` : "Optional — auto-transcribed"}
           </span>
         </label>
       </div>
@@ -121,7 +121,7 @@ export function UploadDropzone({ onSubmit }: Props) {
         disabled={!canSubmit}
         onClick={() => { if (canSubmit) onSubmit(video, srt); }}
       >
-        {canSubmit ? "Create 4 versions" : "Add video + captions to start"}
+        {canSubmit ? "Create 4 versions" : "Add a video to start"}
       </button>
       </section>
     </Reveal>

@@ -42,7 +42,14 @@ export interface InputInfo {
   resolution: [number, number];
 }
 
-export type JobStatus = "queued" | "analyzing" | "rendering" | "done" | "failed";
+export type CaptionsSource = "uploaded" | "transcribed";
+
+export interface CaptionsInfo {
+  source: CaptionsSource;
+  cue_count: number;
+}
+
+export type JobStatus = "queued" | "transcribing" | "analyzing" | "rendering" | "done" | "failed";
 
 export interface JobState {
   job_id: string;
@@ -51,6 +58,8 @@ export interface JobState {
   input: InputInfo | null;
   versions: Record<string, VersionState>;
   error: string | null;
+  captions: CaptionsInfo | null;
+  transcribe_progress: number;
 }
 
 export const PLATFORM_ORDER = ["tiktok", "reels", "shorts", "x"] as const;

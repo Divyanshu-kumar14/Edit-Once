@@ -1,6 +1,6 @@
 /** Typed fetch wrappers + 2 s polling (FR-8.4). */
 
-import type { JobState, VersionOptions } from "./types";
+import type { CaptionsSource, JobState, VersionOptions } from "./types";
 
 const API_BASE = "";
 
@@ -26,16 +26,21 @@ async function parseError(resp: Response): Promise<ApiError> {
 
 export interface UploadResult {
   job_id: string;
-  cues: number;
+  cues: number | null;
+  captions: CaptionsSource;
 }
 
-export async function uploadJob(video: File, srt: File): Promise<UploadResult> {
+export async function uploadJob(video: File, srt: File | null): Promise<UploadResult> {
   const form = new FormData();
   form.append("video", video);
-  form.append("srt", srt);
+  if (srt) form.append("srt", srt);
   const resp = await fetch(`${API_BASE}/api/jobs`, { method: "POST", body: form });
   if (!resp.ok) throw await parseError(resp);
   return resp.json();
+}
+
+export function captionsUrl(jobId: string): string {
+  return `${API_BASE}/api/jobs/${jobId}/captions`;
 }
 
 export async function fetchJob(jobId: string): Promise<JobState> {
