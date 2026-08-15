@@ -40,9 +40,9 @@ Repurpose.io / Opus Clip / Klap *re-cut* videos automatically — the creator lo
 
 | # | Use case | Priority |
 |---|---|---|
-| UC1 | Upload video + SRT → get 4 platform-correct MP4s in one click | P0 |
+| UC1 | Upload video + optional SRT → get 4 platform-correct MP4s in one click (no SRT → captions auto-transcribed on-device) | P0 |
 | UC2 | See side-by-side versions with safe-zone overlays and PASS/FAIL rule checks | P0 |
-| UC3 | Download any version | P0 |
+| UC3 | Download any version; download generated SRT | P0 |
 | UC4 | Adjust crop anchor when auto-detection is wrong, re-render | P1 |
 | UC5 | Batch: N videos → 4N versions in one run | P2 |
 | UC6 | Direct upload to YouTube (Shorts) | P2 |
@@ -52,16 +52,17 @@ Repurpose.io / Opus Clip / Klap *re-cut* videos automatically — the creator lo
 ## 3. Functional Requirements
 
 ### FR-1 Upload (P0)
-- FR-1.1: `POST /api/jobs` accepts multipart: `video` (mp4, ≤200 MB, ≤600 s) and `srt` (UTF-8, CRLF or LF, optional BOM). VTT accepted and converted to SRT.
+- FR-1.1: `POST /api/jobs` accepts multipart: `video` (mp4, ≤200 MB, ≤600 s) and optional `srt` (UTF-8, CRLF or LF, optional BOM). VTT accepted and converted to SRT.
 - FR-1.2: Reject with clear error message (not 500): missing file, wrong extension, file too large, unparseable SRT (report first bad line number).
-- FR-1.3: On success return `job_id`; job enters `queued`.
+- FR-1.3: On success return `job_id`; job enters `queued`. If no SRT was uploaded, captions are transcribed later in the pipeline (see FR-2.6); the response reports `captions: "uploaded" | "auto"` and the initial cue count.
 
 ### FR-2 Job pipeline (P0)
-- FR-2.1: Per job, run pipeline: `analyze` → per-platform `render` → `verify` → `stills`.
+- FR-2.1: Per job, run pipeline: `analyze` → per-platform `render` → `verify` → `stills`. When the upload had no SRT, a `transcribe` stage runs first (whisper, local).
 - FR-2.2: Analyzer computes per-scene crop anchors (see FR-4). If no face found anywhere, use center anchor for all scenes (log note, do not fail).
 - FR-2.3: Renders run sequentially per job (1 render at a time globally). Each platform reports progress 0–100.
 - FR-2.4: A failed platform render does NOT fail the job — that platform shows `failed` + stderr tail; others continue.
 - FR-2.5: Job state persisted to `data/jobs/{job_id}/state.json` so restarts don't lose jobs.
+- FR-2.6: **Transcribe stage (AI captions, P0):** if the upload had no SRT, transcribe the audio with faster-whisper (local, `base` model, CPU int8, VAD filter) and write the result as `in.srt` — the exact file the renderer already reads — then continue downstream unchanged. Status `transcribing` with `transcribe_progress` 0–100. On failure (e.g., model not installed), job fails with a clear message; the whisper import is lazy so the app boots and runs SRT uploads without the model. No cloud, no API keys.
 
 ### FR-3 Platform rules engine (P0 — the product spec)
 - FR-3.1: All rules live in a single `platforms.json` (see §6 for exact values). Adding a platform = adding a config entry + nothing else.
@@ -127,8 +128,9 @@ Every item below must be verifiable by running the app:
 | AC-3 | All 4 checklists show `resolution PASS`, `ratio PASS`, `captions_safe PASS`, `audio PASS` for the fixture. |
 | AC-4 | With the overlay toggle ON, captions in each still sit fully inside the platform safe rect (visual check, fixture has captions near the bottom edge so TikTok passes but would fail Reels if margins were wrong — i.e., the repositioning is *visible*). |
 | AC-5 | Downloads return correct MP4 files. |
-| AC-6 | Upload a video with *no* SRT → friendly 4xx error, no crash. Upload a broken SRT (bad timestamp) → error naming the line. |
-| AC-7 | `pytest` passes: test_srt, test_ass, test_rules, test_verifier, test_api (≥80% coverage on pure-logic modules). |
+| AC-6 | Upload a video with *no* SRT → captions are auto-transcribed (faster-whisper, local): polling shows `transcribing`, then `done` with `captions: "auto"`; the generated SRT is served via `GET /api/jobs/{id}/captions`. Upload a broken SRT (bad timestamp) → error naming the line. |
+| AC-6b | Health endpoint reports whisper availability; with faster-whisper absent, video-only uploads fail with a clear message while SRT uploads keep working. |
+| AC-7 | `pytest` passes: test_srt, test_ass, test_rules, test_verifier, test_transcriber, test_api (≥80% coverage on pure-logic modules). |
 | AC-8 | `scripts/setup.sh && scripts/run.sh` on a clean machine → app at localhost:8000 works end-to-end with the fixture. |
 | AC-9 | (P1) Face anchor: fixture with a face on the left third → crop window is left-of-center, not centered. |
 

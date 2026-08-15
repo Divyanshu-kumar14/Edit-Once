@@ -63,7 +63,10 @@ tracked in state only.
     Response gains `"captions": "uploaded"|"auto"`.
   - **New** `GET /api/jobs/{id}/captions` → `FileResponse` of the job's SRT as
     `captions.srt` (works for uploaded and transcribed).
-  - `/api/health` gains `"whisper": bool` (model available).
+  - `/api/health` gains `"whisper": bool` — faster-whisper importable (fast
+    import check; the model itself is pre-downloaded by setup.sh and a missing
+    model is surfaced by the transcribe error path — health never triggers a
+    download).
 
 ### Error paths (clear messages, no 500s)
 
