@@ -9,17 +9,19 @@ interface Props {
   /** Seconds before the first child starts. */
   startDelay?: number;
   className?: string;
+  "aria-label"?: string;
+  role?: string;
 }
 
 /**
  * Stagger — cascades a spring fade+rise entrance across its children,
  * one after another. Renders a plain div under reduced motion.
  */
-export function Stagger({ children, gap = 0.08, startDelay = 0, className }: Props) {
+export function Stagger({ children, gap = 0.08, startDelay = 0, className, ...rest }: Props) {
   const reduce = useReducedMotion();
-  if (reduce) return <div className={className}>{children}</div>;
+  if (reduce) return <div className={className} {...rest}>{children}</div>;
   return (
-    <div className={className}>
+    <div className={className} {...rest}>
       {Children.map(children, (child, i) => (
         <motion.div
           key={i}
