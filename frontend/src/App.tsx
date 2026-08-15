@@ -87,11 +87,11 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <AuroraBackground />
-      <div className="app">
+      <header className="header">
         <Reveal y={-10}>
-          <header className="header">
+          <div className="header-inner">
             <div className="brand">
-              <span className="brand-mark">EO</span>
+              <img src="/logo.jpg" alt="Edit Once Logo" className="brand-mark" />
               <div>
                 <h1>Edit Once</h1>
                 <p className="tagline gradient-text">Publish Everywhere — platform-correct shorts, verified.</p>
@@ -102,8 +102,11 @@ export default function App() {
                 New job
               </button>
             )}
-          </header>
+          </div>
         </Reveal>
+      </header>
+
+      <div className="app">
 
         {error && (
           <div className="error-banner" role="alert">

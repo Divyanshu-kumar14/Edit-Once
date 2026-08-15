@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import type { PlatformId, VersionOptions, VersionState } from "../types";
 import { Checklist } from "./Checklist";
@@ -304,34 +305,37 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
         )}
       </footer>
 
-      <AnimatePresence>
-        {playing && version.download_url && (
-          <motion.div
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${label} rendered video`}
-            onClick={() => setPlaying(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {playing && version.download_url && (
             <motion.div
-              className="modal-body"
-              onClick={(e) => e.stopPropagation()}
-              initial={{ scale: 0.92, y: 14 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 8 }}
-              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              className="modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${label} rendered video`}
+              onClick={() => setPlaying(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
             >
-              <video src={version.download_url} controls autoPlay className="modal-video" />
-              <button className="btn ghost" onClick={() => setPlaying(false)}>
-                Close
-              </button>
+              <motion.div
+                className="modal-body"
+                onClick={(e) => e.stopPropagation()}
+                initial={{ scale: 0.92, y: 14 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 8 }}
+                transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              >
+                <video src={version.download_url} controls autoPlay className="modal-video" />
+                <button className="btn ghost" onClick={() => setPlaying(false)}>
+                  Close
+                </button>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </article>
   );
 }
