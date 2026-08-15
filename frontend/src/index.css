@@ -188,8 +188,19 @@ html, body {
   transition: filter 0.15s ease, background 0.15s ease;
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn.primary { background: var(--accent); color: #0b0e14; }
+.btn.primary { background: var(--accent); color: #0b0e14; position: relative; overflow: hidden; }
 .btn.primary:hover:not(:disabled) { filter: brightness(1.1); }
+/* Shine sweep across primary buttons on hover. */
+.btn.primary::after {
+  content: "";
+  position: absolute; top: 0; bottom: 0; left: -70%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+.btn.primary:hover:not(:disabled)::after { left: 130%; }
 .btn.ghost { background: transparent; color: var(--text); border-color: var(--border); }
 .btn.ghost:hover { background: var(--surface-2); }
 .btn.tiny { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
@@ -198,14 +209,19 @@ html, body {
 
 /* --- dropzone ------------------------------------------------------------ */
 .dropzone {
-  background: var(--surface);
-  border: 2px dashed var(--border);
+  border: 1px solid var(--glass-border);
   border-radius: 14px;
   padding: 48px 32px;
   text-align: center;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.2s ease, transform 0.2s var(--ease-spring);
 }
-.dropzone.dragging { border-color: var(--accent); background: var(--accent-soft); }
+/* Drag-over: accent border + glow + a slight lift so the drop feels magnetic. */
+.dropzone.dragging {
+  border-color: var(--accent);
+  background: rgba(255, 107, 53, 0.08);
+  box-shadow: 0 0 0 1px rgba(255, 107, 53, 0.4), 0 16px 48px -16px rgba(255, 107, 53, 0.4);
+  transform: scale(1.01);
+}
 .dropzone h2 { margin: 0 0 8px; font-size: 24px; }
 .muted { color: var(--muted); }
 .dropzone .muted { max-width: 560px; margin: 0 auto 28px; }
@@ -213,23 +229,28 @@ html, body {
 .file-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
 .file-pick {
   display: flex; flex-direction: column; gap: 6px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 14px 20px;
   min-width: 260px;
   cursor: pointer;
   text-align: left;
+  transition: transform 0.18s var(--ease-spring), border-color 0.18s ease;
 }
-.file-pick:hover { border-color: var(--accent); }
+.file-pick:hover { transform: translateY(-2px); border-color: var(--accent); }
 .file-label { font-weight: 700; font-size: 14px; letter-spacing: 0.4px; }
 .file-name { font-size: 13px; color: var(--accent); word-break: break-all; }
 .file-pick .muted { font-size: 13px; margin: 0; }
 
 .parse-preview {
   display: flex; gap: 12px; align-items: baseline; justify-content: center;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 10px 16px;
   margin-bottom: 24px;

@@ -1,4 +1,6 @@
 import { useCallback, useState } from "react";
+import { CountUp } from "../ui/CountUp";
+import { Reveal } from "../ui/Reveal";
 
 interface Props {
   onSubmit: (video: File, srt: File) => void;
@@ -53,13 +55,14 @@ export function UploadDropzone({ onSubmit }: Props) {
   const canSubmit = video !== null && srt !== null;
 
   return (
-    <section
-      className={`dropzone ${dragging ? "dragging" : ""}`}
-      aria-label="Upload area: drop or pick an MP4 video and an SRT caption file"
-      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(e) => { e.preventDefault(); setDragging(false); handleDrop(e.dataTransfer.files); }}
-    >
+    <Reveal>
+      <section
+        className={`dropzone glass ${dragging ? "dragging" : ""}`}
+        aria-label="Upload area: drop or pick an MP4 video and an SRT caption file"
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); handleDrop(e.dataTransfer.files); }}
+      >
       <h2>Repack one edit for all four platforms</h2>
       <p className="muted">
         Drop your finished MP4 (caption-free) and its SRT. We re-render captions into each
@@ -105,7 +108,9 @@ export function UploadDropzone({ onSubmit }: Props) {
       )}
       {!parsing && preview && (
         <div className="parse-preview" aria-live="polite">
-          <strong>{preview.count} caption cue{preview.count === 1 ? "" : "s"}</strong>
+          <strong>
+            <CountUp value={preview.count} /> caption cue{preview.count === 1 ? "" : "s"}
+          </strong>
           <span className="muted">{preview.preview}</span>
         </div>
       )}
@@ -118,6 +123,7 @@ export function UploadDropzone({ onSubmit }: Props) {
       >
         {canSubmit ? "Repack for 4 platforms →" : "Add video + captions to start"}
       </button>
-    </section>
+      </section>
+    </Reveal>
   );
 }
