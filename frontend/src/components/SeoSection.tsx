@@ -37,6 +37,26 @@ function copyAllText(pack: SeoPack): string {
   return `Title: ${pack.title}\n\n${pack.description}\n\n${tags}`;
 }
 
+/**
+ * Loading placeholder: 4 LLM calls take seconds — skeleton cards keep the
+ * grid layout stable so nothing jumps when the real packs land (CLS-safe),
+ * and the shimmer reads as "work in progress" instead of a dead screen.
+ */
+function PackSkeleton({ label }: { label: string }) {
+  return (
+    <div className="seo-card glass" aria-hidden="true">
+      <div className="seo-card-head">
+        <strong>{label}</strong>
+        <span className="skeleton seo-skel-btn" />
+      </div>
+      <span className="skeleton seo-skel-line wide" />
+      <span className="skeleton seo-skel-line" />
+      <span className="skeleton seo-skel-line" />
+      <span className="skeleton seo-skel-line short" />
+    </div>
+  );
+}
+
 function PackCard({
   platform,
   pack,
@@ -156,7 +176,13 @@ export function SeoSection({ job, onPacks }: Props) {
 
   return (
     <Reveal>
-      <section className="seo-section" aria-label="SEO packs">
+      <section
+        className="seo-section"
+        aria-label="SEO packs"
+        // aria-busy tells AT the section is mid-generation; the skeletons
+        // below are aria-hidden so screen readers don't read shimmer noise.
+        aria-busy={loading}
+      >
         {hasPacks ? (
           <>
             <div className="seo-head">
@@ -173,11 +199,21 @@ export function SeoSection({ job, onPacks }: Props) {
               </button>
             </div>
             <div className="seo-grid">
-              {PLATFORM_ORDER.map((pid) =>
-                packs[pid] ? (
-                  <PackCard key={pid} platform={pid} pack={packs[pid]!} copied={copied} flash={flash} />
-                ) : null,
-              )}
+              {loading
+                ? PLATFORM_ORDER.map((pid) => (
+                    <PackSkeleton key={pid} label={PLATFORM_LABELS[pid]} />
+                  ))
+                : PLATFORM_ORDER.map((pid) =>
+                    packs[pid] ? (
+                      <PackCard
+                        key={pid}
+                        platform={pid}
+                        pack={packs[pid]!}
+                        copied={copied}
+                        flash={flash}
+                      />
+                    ) : null,
+                  )}
             </div>
           </>
         ) : groqAvailable === false ? (
@@ -197,6 +233,13 @@ export function SeoSection({ job, onPacks }: Props) {
               Title, description and viral hashtags for each platform — grounded in what your
               video actually says.
             </p>
+            {loading && (
+              <div className="seo-grid seo-skel-cta" aria-hidden="true">
+                {PLATFORM_ORDER.map((pid) => (
+                  <PackSkeleton key={pid} label={PLATFORM_LABELS[pid]} />
+                ))}
+              </div>
+            )}
             {error && (
               <p className="seo-error" role="alert">
                 {error}
