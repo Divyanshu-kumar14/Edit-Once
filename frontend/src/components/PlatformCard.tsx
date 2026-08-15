@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Play, Download, Copy, X } from "lucide-react";
+import { Download, X } from "lucide-react";
 import type { PlatformId, VersionOptions, VersionState } from "../types";
 import { STATUS_LABEL } from "../types";
-import { Checklist } from "./Checklist";
-import { SafeZoneOverlay } from "./SafeZoneOverlay";
 import { Shine } from "../ui/Shine";
 
 interface Props {
@@ -18,7 +16,6 @@ interface Props {
 const DRAG_THRESHOLD_PX = 6;
 
 export function PlatformCard({ label, platform, version, onRerender }: Props) {
-  const [overlay, setOverlay] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   // FR-4.3: drag marker (normalized 0..1 within the still).
@@ -63,23 +60,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
   }
 
   const still = version.stills[0] ?? null;
-  const spec = version.spec;
   const croppable = version.status === "done" && version.fit === "crop";
-
-  const copySpec = async () => {
-    if (!spec) return;
-    const text =
-      `${label}\n` +
-      `Resolution: ${spec.width}×${spec.height}\n` +
-      `Duration: ${spec.duration_s.toFixed(1)} s\n` +
-      `Safe margins: bottom ${Math.round(spec.margins.bottom * 100)}% · ` +
-      `right ${Math.round(spec.margins.right * 100)}% · top ${Math.round(spec.margins.top * 100)}%`;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      /* clipboard unavailable — non-critical */
-    }
-  };
 
   // -- FR-4.3 anchor drag ---------------------------------------------------
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -244,69 +225,16 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
               />
             )}
           </div>
-          {overlay && spec && <SafeZoneOverlay margins={spec.margins} label={label} />}
-          <div className="still-actions">
-            <button className="btn tiny" onClick={() => setPlaying(true)}>
-              <Play size={14} fill="currentColor" aria-hidden="true" /> Play
-            </button>
-            {spec && (
-              <button
-                className="btn tiny"
-                aria-pressed={overlay}
-                onClick={() => setOverlay((o) => !o)}
-              >
-                {overlay ? "Hide safe areas" : "Show safe areas"}
-              </button>
-            )}
-          </div>
-          {version.stills.length > 1 && (
-            <div className="thumb-row">
-              {version.stills.slice(1).map((s, i) => (
-                <img key={i} src={s} alt={`${label} still ${i + 2}`} onClick={openPlayer} />
-              ))}
-            </div>
-          )}
         </div>
       ) : (
         <div className="muted no-still">No preview available</div>
       )}
-
-      <div className="fit-row">
-        <div className="fit-toggle" role="group" aria-label={`${label} frame fit`}>
-          <button
-            className={version.fit === "crop" ? "active" : ""}
-            aria-pressed={version.fit === "crop"}
-            onClick={() => onRerender(platform, { fit: "crop", anchor: version.anchor_override })}
-          >
-            Crop
-          </button>
-          <button
-            className={version.fit === "blur" ? "active" : ""}
-            aria-pressed={version.fit === "blur"}
-            onClick={() => onRerender(platform, { fit: "blur", anchor: version.anchor_override })}
-          >
-            Blur fill
-          </button>
-        </div>
-        <p className="muted fit-hint">
-          {version.fit === "crop"
-            ? "Drag the preview to set the crop anchor"
-            : "Letterboxes with a blurred background"}
-        </p>
-      </div>
-
-      <Checklist checks={version.checks} />
 
       <footer className="card-foot">
         {version.download_url && (
           <a className="btn primary" href={version.download_url} download>
             <Download size={14} aria-hidden="true" /> Download MP4
           </a>
-        )}
-        {spec && (
-          <button className="btn ghost" onClick={copySpec}>
-            <Copy size={14} aria-hidden="true" /> Copy details
-          </button>
         )}
       </footer>
 
