@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { Film, Captions } from "lucide-react";
 import { CountUp } from "../ui/CountUp";
 import { Reveal } from "../ui/Reveal";
 
@@ -63,10 +64,9 @@ export function UploadDropzone({ onSubmit }: Props) {
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); handleDrop(e.dataTransfer.files); }}
       >
-      <h2>Repack one edit for all four platforms</h2>
+      <h2>Upload your video and captions</h2>
       <p className="muted">
-        Drop your finished MP4 (caption-free) and its SRT. We re-render captions into each
-        platform's safe zone and verify every rule.
+        Upload your MP4 and caption file — we re-render captions into each platform's safe zone.
       </p>
 
       <div className="file-row">
@@ -79,7 +79,7 @@ export function UploadDropzone({ onSubmit }: Props) {
             aria-label="Choose MP4 video file"
             onChange={(e) => { setVideo(e.target.files?.[0] ?? null); }}
           />
-          <span className="file-label">🎬 Video</span>
+          <span className="file-label"><Film size={14} aria-hidden="true" /> Video file</span>
           <span className={video ? "file-name" : "muted"}>
             {video ? `${video.name} (${(video.size / 1e6).toFixed(1)} MB)` : "MP4, ≤ 200 MB, ≤ 600 s"}
           </span>
@@ -93,7 +93,7 @@ export function UploadDropzone({ onSubmit }: Props) {
             aria-label="Choose SRT or VTT caption file"
             onChange={(e) => selectSrt(e.target.files?.[0] ?? null)}
           />
-          <span className="file-label">💬 Captions</span>
+          <span className="file-label"><Captions size={14} aria-hidden="true" /> Caption file</span>
           <span className={srt ? "file-name" : "muted"}>
             {srt ? `${srt.name}` : "SRT or VTT"}
           </span>
@@ -121,7 +121,7 @@ export function UploadDropzone({ onSubmit }: Props) {
         disabled={!canSubmit}
         onClick={() => { if (canSubmit) onSubmit(video, srt); }}
       >
-        {canSubmit ? "Repack for 4 platforms →" : "Add video + captions to start"}
+        {canSubmit ? "Create 4 versions" : "Add video + captions to start"}
       </button>
       </section>
     </Reveal>

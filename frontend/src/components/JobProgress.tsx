@@ -1,9 +1,10 @@
-import { PLATFORM_LABELS, PLATFORM_ORDER, type JobState } from "../types";
+import { PLATFORM_LABELS, PLATFORM_ORDER, STATUS_LABEL } from "../types";
+import type { JobState } from "../types";
 import { Reveal } from "../ui/Reveal";
 import { Stagger } from "../ui/Stagger";
 
 export function JobProgress({ job }: { job: JobState }) {
-  const phase = job.status === "analyzing" ? "Analyzing scene crop anchors…" : "Rendering…";
+  const phase = job.status === "analyzing" ? "Analyzing scene crop anchors…" : "Rendering your video…";
   const analyzing = job.status === "analyzing";
 
   return (
@@ -19,7 +20,7 @@ export function JobProgress({ job }: { job: JobState }) {
         {PLATFORM_ORDER.map((pid) => {
           const v = job.versions[pid];
           if (!v) return null;
-          const label = v.status === "done" ? "done" : v.status === "failed" ? "failed" : `${v.progress}%`;
+          const label = v.status === "done" || v.status === "failed" ? STATUS_LABEL[v.status] : `${v.progress}%`;
           const active = v.status === "rendering";
           return (
             <div className={`progress-row${active ? " active" : ""}`} key={pid}>

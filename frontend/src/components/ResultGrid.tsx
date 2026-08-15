@@ -31,14 +31,15 @@ export function ResultGrid({ job, onRerender }: Props) {
           </span>
           <span className="summary-sep" aria-hidden="true">·</span>
           <span className="summary-checks">
-            <CountUp value={checksPassed} /> / {checks.length} checks PASS
+            <CountUp value={checksPassed} /> / {checks.length} checks passed
           </span>
         </div>
-        <h2>4 platform-correct versions</h2>
+        <h2>Your versions are ready</h2>
         <p className="muted">
           {job.input?.filename} · {(job.input?.duration_s ?? 0).toFixed(1)} s ·{" "}
           {job.input?.resolution[0]}×{job.input?.resolution[1]} source
         </p>
+        <p className="muted">Verified against each platform's spec.</p>
       </Reveal>
       <Stagger gap={0.09} startDelay={0.15} className="grid">
         {PLATFORM_ORDER.map((pid) => (
