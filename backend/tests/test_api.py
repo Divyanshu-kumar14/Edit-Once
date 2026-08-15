@@ -57,13 +57,14 @@ def test_upload_missing_video(client) -> None:
     assert "video" in resp.json()["detail"].lower()
 
 
-def test_upload_missing_srt(client) -> None:
+def test_upload_video_only_unreadable_video_422(client) -> None:
+    """Video-only upload of an unreadable file -> probe error (not caption error)."""
     resp = client.post(
         "/api/jobs",
         files={"video": ("in.mp4", TINY_MP4, "video/mp4")},
     )
     assert resp.status_code == 422
-    assert "caption" in resp.json()["detail"].lower()
+    assert "video" in resp.json()["detail"].lower()
 
 
 def test_upload_wrong_video_extension(client) -> None:
@@ -254,3 +255,57 @@ def test_options_anchor_clamped(client) -> None:
     put = _put_options(client, job_id, "x", {"fit": "crop", "anchor": [-0.2, 1.4]})
     assert put.status_code == 200
     assert put.json()["versions"]["x"]["anchor_override"] == [0.0, 1.0]
+
+# --- AI caption transcription: video-only upload (auto-transcribe stage) -------
+
+def test_video_only_auto_transcribes_and_completes(client, monkeypatch) -> None:
+    """Video-only upload -> transcribing stage runs (mocked) -> all 4 done."""
+    from app import queue as queue_mod
+
+    def fake_transcribe(audio_path, srt_path, on_progress=None):
+        # write a real SRT so the downstream pipeline (which is NOT mocked)
+        # has cues to re-render from
+        (srt_path).write_text(VALID_SRT, encoding="utf-8")
+        if on_progress:
+            on_progress(50)
+            on_progress(100)
+        return 1
+
+    monkeypatch.setattr(queue_mod.transcriber, "transcribe", fake_transcribe)
+
+    video_path = SHORT_FIXTURE_DIR / "fixture.mp4"
+    resp = client.post(
+        "/api/jobs",
+        files={"video": ("fixture.mp4", video_path.read_bytes(), "video/mp4")},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["captions"] == "auto"
+
+    done = _poll_done(client, body["job_id"])
+    assert done["status"] == "done", done.get("error")
+    assert done["captions"] == {"source": "transcribed", "cue_count": 1}
+    assert done["transcribe_progress"] == 100
+    for pid in ("tiktok", "reels", "shorts", "x"):
+        assert done["versions"][pid]["status"] == "done", pid
+
+
+def test_video_only_transcription_failure_fails_job(client, monkeypatch) -> None:
+    from app import queue as queue_mod
+
+    def boom(_a, _b, on_progress=None):
+        from app.pipeline.transcriber import TranscriptionError
+
+        raise TranscriptionError("No speech detected in audio — upload an SRT instead.")
+
+    monkeypatch.setattr(queue_mod.transcriber, "transcribe", boom)
+
+    video_path = SHORT_FIXTURE_DIR / "fixture.mp4"
+    resp = client.post(
+        "/api/jobs",
+        files={"video": ("fixture.mp4", video_path.read_bytes(), "video/mp4")},
+    )
+    assert resp.status_code == 201
+    body = _poll_done(client, resp.json()["job_id"])
+    assert body["status"] == "failed"
+    assert "No speech detected" in body["error"]

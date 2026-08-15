@@ -77,22 +77,22 @@ async def create_job(
     # the byte budget check runs per chunk so oversized uploads fail early (413).
     video_path, _size = await _save_upload(video)
     try:
-        # --- caption validation (FR-1.2, AC-6) ---
-        if srt is None or srt.filename is None:
-            raise HTTPException(
-                status_code=422,
-                detail="Missing caption file (.srt or .vtt). Source video must be caption-free — "
-                "captions are re-rendered from this file.",
-            )
-        srt_ext = Path(srt.filename).suffix.lower()
-        if srt_ext not in config.ALLOWED_CAPTION_EXTS:
-            raise HTTPException(status_code=422, detail="Caption file must be .srt or .vtt")
+        # --- caption validation (FR-1.2, AC-6) — optional: absent SRTs are
+        # auto-transcribed from the audio (AI caption stage) ---
+        srt_bytes: bytes | None = None
+        if srt is not None and srt.filename is not None:
+            srt_ext = Path(srt.filename).suffix.lower()
+            if srt_ext not in config.ALLOWED_CAPTION_EXTS:
+                raise HTTPException(status_code=422, detail="Caption file must be .srt or .vtt")
 
-        srt_text = (await srt.read()).decode("utf-8", errors="replace")
-        try:
-            cues = parse_captions(srt_text, srt.filename)
-        except SrtParseError as exc:
-            raise HTTPException(status_code=422, detail=f"Caption parse error: {exc}") from exc
+            srt_text = (await srt.read()).decode("utf-8", errors="replace")
+            try:
+                cues = parse_captions(srt_text, srt.filename)
+            except SrtParseError as exc:
+                raise HTTPException(status_code=422, detail=f"Caption parse error: {exc}") from exc
+            srt_bytes = srt_text.encode("utf-8")
+        else:
+            cues = []
 
         # --- video sanity (duration limit, readability) ---
         try:
@@ -105,10 +105,17 @@ async def create_job(
                 detail=f"Video duration {info.duration_s:.1f}s exceeds the 600 s limit",
             )
 
-        state = manager.create_job(video_path, srt_text.encode("utf-8"), video.filename)
+        state = manager.create_job(video_path, srt_bytes, video.filename)
     finally:
         video_path.unlink(missing_ok=True)  # job dir holds the real copy
-    return JSONResponse(status_code=201, content={"job_id": state.job_id, "cues": len(cues)})
+    return JSONResponse(
+        status_code=201,
+        content={
+            "job_id": state.job_id,
+            "cues": len(cues),
+            "captions": "uploaded" if srt_bytes is not None else "auto",
+        },
+    )
 
 
 async def _save_upload(video: UploadFile) -> tuple[Path, int]:

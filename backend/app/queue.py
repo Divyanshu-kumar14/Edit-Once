@@ -12,9 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import config
-from .models import InputInfo, JobState, SpecInfo, VersionState
-from .pipeline import analyzer, ass, renderer, rules, stills, verifier
+from .models import CaptionsInfo, InputInfo, JobState, SpecInfo, VersionState
+from .pipeline import analyzer, ass, renderer, rules, stills, transcriber, verifier
 from .pipeline.probe import MediaInfo, ProbeError, probe
+from .pipeline.transcriber import TranscriptionError
 
 
 def _platform_ids() -> list[str]:
@@ -66,14 +67,17 @@ class JobManager:
         return self._thread.is_alive()
 
     # -- job creation / polling ---------------------------------------------
-    def create_job(self, video_path: Path, srt_bytes: bytes, filename: str) -> JobState:
+    def create_job(
+        self, video_path: Path, srt_bytes: bytes | None, filename: str
+    ) -> JobState:
         job_id = str(uuid.uuid4())
         job_dir = self._jobs_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=False)
         # shutil.copyfile streams in fixed-size chunks — no 200 MB byte string
         # in memory (uploads are already spooled to a temp file by the API).
         shutil.copyfile(video_path, job_dir / "in.mp4")
-        (job_dir / "in.srt").write_bytes(srt_bytes)
+        if srt_bytes is not None:
+            (job_dir / "in.srt").write_bytes(srt_bytes)
 
         state = JobState(
             job_id=job_id,
@@ -84,6 +88,9 @@ class JobManager:
                 platform: VersionState(status="queued")
                 for platform in _platform_ids()
             },
+            captions=CaptionsInfo(
+                source="uploaded" if srt_bytes is not None else "transcribed"
+            ),
         )
         self._persist(state)
         self._queue.put(("job", job_id))
@@ -200,6 +207,33 @@ class JobManager:
         state = self._load(job_id)
         if state is None:
             return
+
+        # --- transcribe: only when no SRT was uploaded (AI caption stage) ---
+        # Generated captions are written to in.srt — the exact file _prepare()
+        # reads — so every downstream stage is unchanged. A transcription
+        # failure fails the whole job (there is nothing else to render).
+        if state.captions is not None and state.captions.source == "transcribed":
+            state.status = "transcribing"
+            state.transcribe_progress = 0
+            self._persist(state)
+            job_dir = self.job_path(job_id)
+
+            def progress(pct: int) -> None:
+                state.transcribe_progress = pct
+                self._persist(state)
+
+            try:
+                cue_count = transcriber.transcribe(
+                    job_dir / "in.mp4", job_dir / "in.srt", on_progress=progress
+                )
+                state.captions.cue_count = cue_count
+                state.transcribe_progress = 100
+                self._persist(state)
+            except TranscriptionError as exc:
+                state.status = "failed"
+                state.error = str(exc)
+                self._persist(state)
+                return
 
         # --- analyze: probe input + SRT + scene/face anchors ---
         # _prepare() is memoized per job, so this initial pass fills the
