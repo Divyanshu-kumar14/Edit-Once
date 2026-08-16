@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Download, X } from "lucide-react";
-import type { PlatformId, VersionOptions, VersionState } from "../types";
+import type { PlatformId, VersionOptions, VersionState, CaptionTemplate } from "../types";
 import { STATUS_LABEL } from "../types";
-import { Shine } from "../ui/Shine";
 
 interface Props {
   label: string;
@@ -27,6 +26,10 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
   const posRef = useRef<{ x: number; y: number } | null>(null);
   const rafRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
+  // Modal a11y refs: focus the dialog on open, restore to the still on close.
+  const triggerRef = useRef<HTMLImageElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   // Cancel a pending rAF on unmount so we never setState after teardown.
   useEffect(
@@ -36,14 +39,38 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
     [],
   );
 
-  // Modal a11y: close on Escape (dialog role is on the element below).
+  // Modal a11y: Escape closes, Tab is trapped inside the dialog, and focus
+  // moves into the dialog on open and back to the still on close.
   useEffect(() => {
     if (!playing) return;
+    const raf = requestAnimationFrame(() => closeRef.current?.focus());
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPlaying(false);
+      if (e.key === "Escape") {
+        setPlaying(false);
+        return;
+      }
+      if (e.key === "Tab" && modalRef.current) {
+        const focusables = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], video, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", onKey);
+      triggerRef.current?.focus();
+    };
   }, [playing]);
 
   if (version.status === "failed") {
@@ -107,7 +134,11 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
       suppressClickRef.current = true;
       setTimeout(() => (suppressClickRef.current = false), 0);
       setDragPos(null);
-      onRerender(platform, { fit: "crop", anchor: [final.x, final.y] });
+      onRerender(platform, {
+        fit: "crop",
+        anchor: [final.x, final.y],
+        caption_template: version.caption_template,
+      });
     }
   };
 
@@ -138,6 +169,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
         Math.min(1, Math.max(0, cur[0] + dx)),
         Math.min(1, Math.max(0, cur[1] + dy)),
       ],
+      caption_template: version.caption_template,
     });
   };
 
@@ -193,6 +225,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
               className="still"
               draggable={false}
               tabIndex={0}
+              ref={triggerRef}
               aria-label={
                 croppable
                   ? `${label} preview. Enter to play. Arrow keys move the crop anchor.`
@@ -205,8 +238,6 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
             />
-            {/* One light sweep across the preview once it has loaded. */}
-            {imgLoaded && <Shine delay={0.3} />}
             {croppable && version.anchor_override && (
               <span
                 className="anchor-marker static"
@@ -230,7 +261,60 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
         <div className="muted no-still">No preview available</div>
       )}
 
+      {version.status === "done" && (
+        <div className="card-settings">
+          <label htmlFor={`style-select-${platform}`}>Caption Style:</label>
+          <select
+            id={`style-select-${platform}`}
+            className="style-select"
+            value={version.caption_template || "default"}
+            onChange={(e) =>
+              onRerender(platform, {
+                fit: version.fit || "crop",
+                anchor: version.anchor_override,
+                caption_template: e.target.value as CaptionTemplate,
+              })
+            }
+          >
+            <option value="default">Default</option>
+            <option value="karaoke">Karaoke (Word-by-word)</option>
+            <option value="pop">Pop Red</option>
+            <option value="bold">Bold Outline</option>
+          </select>
+        </div>
+      )}
+
       <footer className="card-foot">
+        {version.status === "done" && (
+          <div className="fit-toggle" role="group" aria-label="Fit Mode">
+            <button
+              className={`fit-btn ${version.fit === "crop" ? "active" : ""}`}
+              onClick={() =>
+                onRerender(platform, {
+                  fit: "crop",
+                  anchor: version.anchor_override,
+                  caption_template: version.caption_template,
+                })
+              }
+              aria-pressed={version.fit === "crop"}
+            >
+              Crop
+            </button>
+            <button
+              className={`fit-btn ${version.fit === "blur" ? "active" : ""}`}
+              onClick={() =>
+                onRerender(platform, {
+                  fit: "blur",
+                  anchor: version.anchor_override,
+                  caption_template: version.caption_template,
+                })
+              }
+              aria-pressed={version.fit === "blur"}
+            >
+              Blur Pad
+            </button>
+          </div>
+        )}
         {version.download_url && (
           <a className="btn primary" href={version.download_url} download>
             <Download size={14} aria-hidden="true" /> Download MP4
@@ -253,6 +337,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
             >
               <motion.div
                 className="modal-body"
+                ref={modalRef}
                 onClick={(e) => e.stopPropagation()}
                 initial={{ scale: 0.92, y: 14 }}
                 animate={{ scale: 1, y: 0 }}
@@ -260,7 +345,7 @@ export function PlatformCard({ label, platform, version, onRerender }: Props) {
                 transition={{ type: "spring", stiffness: 260, damping: 30 }}
               >
                 <video src={version.download_url} controls autoPlay className="modal-video" />
-                <button className="btn ghost" onClick={() => setPlaying(false)}>
+                <button ref={closeRef} className="btn ghost" onClick={() => setPlaying(false)}>
                   <X size={14} aria-hidden="true" /> Close
                 </button>
               </motion.div>

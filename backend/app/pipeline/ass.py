@@ -171,7 +171,9 @@ def parse_captions(text: str, filename: str) -> list[Cue]:
 class WrappedCue:
     cue_index: int
     lines: list[str]
-    truncated: bool  # line truncated with "…" -> checklist WARN, not FAIL
+    truncated: bool = False  # kept for verifier compat; split path never truncates
+    start_ms: int = 0
+    end_ms: int = 0
 
     @property
     def line_count(self) -> int:
@@ -195,11 +197,11 @@ def _strip_inline_tags(text: str) -> str:
     return re.sub(r"<[^>]+>", "", text)
 
 
-def wrap_text(text: str, max_units: int, max_lines: int) -> tuple[list[str], bool]:
+def _wrap_lines(text: str, max_units: int) -> list[str]:
     """Word-wrap text into lines of at most max_units (latin/CJK units, PRD 6.2).
 
-    Returns (lines, truncated) — when the wrapped text exceeds max_lines the
-    last line is cut and marked with '…' (PRD 6.2: never silently drop).
+    No line-count cap: the caller splits the wrapped lines into timed chunks,
+    so text is never silently dropped (PRD 6.2).
 
     Complexity: O(n) — unit counts are accumulated, never recomputed (the naive
     "units(current + ' ' + word)" per word is O(n²) on long captions).
@@ -237,7 +239,22 @@ def wrap_text(text: str, max_units: int, max_lines: int) -> tuple[list[str], boo
 
     if current:
         lines.append(current)
+    return lines
 
+
+def wrap_text(text: str, max_units: int, max_lines: int) -> tuple[list[str], bool]:
+    """Word-wrap text into lines of at most max_units (latin/CJK units, PRD 6.2).
+
+    Returns (lines, truncated) — when the wrapped text exceeds max_lines the
+    last line is cut and marked with '…' (PRD 6.2: never silently drop).
+    Note: the render pipeline no longer truncates — long cues are split into
+    sequential timed chunks (see wrap_cue); this truncating variant remains
+    for callers that need a hard line cap.
+
+    Complexity: O(n) — unit counts are accumulated, never recomputed (the naive
+    "units(current + ' ' + word)" per word is O(n²) on long captions).
+    """
+    lines = _wrap_lines(text, max_units)
     truncated = len(lines) > max_lines
     if truncated:
         lines = lines[:max_lines]
@@ -254,32 +271,119 @@ def wrap_text(text: str, max_units: int, max_lines: int) -> tuple[list[str], boo
     return lines, truncated
 
 
-def wrap_cue(cue: Cue, max_units: int, max_lines: int) -> WrappedCue:
+def _split_cue_timing(
+    cue: Cue, chunks: list[list[str]], duration_ms: int
+) -> list[WrappedCue]:
+    """Turn wrapped-line chunks into timed WrappedCues (no '…' truncation).
+
+    Each chunk gets a slice of the cue's time window proportional to its
+    text width (latin/CJK units), so every word stays on screen and the
+    chunks read as one continuous caption. The last chunk ends exactly at
+    the cue end (clamped to the video duration).
+    """
+    if not chunks:
+        return []
+    start_ms = max(0, cue.start_ms)
+    end_ms = min(max(0, cue.end_ms), duration_ms)
+    if len(chunks) == 1:
+        return [WrappedCue(cue_index=cue.index, lines=chunks[0], start_ms=start_ms, end_ms=end_ms)]
+
+    units = [sum(text_units(line) for line in chunk) for chunk in chunks]
+    total = max(1, sum(units))
+    span = max(0, end_ms - start_ms)
+
+    wrapped: list[WrappedCue] = []
+    cursor = start_ms
+    cumulative = 0
+    for i, chunk in enumerate(chunks):
+        cumulative += units[i]
+        end = (
+            end_ms
+            if i == len(chunks) - 1
+            else start_ms + round(span * cumulative / total)
+        )
+        end = max(end, cursor)  # monotonic: chunks never overlap or invert
+        wrapped.append(
+            WrappedCue(cue_index=cue.index, lines=chunk, start_ms=cursor, end_ms=end)
+        )
+        cursor = end
+    return wrapped
+
+
+def wrap_cue(cue: Cue, max_units: int, max_lines: int, duration_ms: int) -> list[WrappedCue]:
+    """Wrap + split one cue into one-or-more timed caption chunks.
+
+    Text longer than max_lines lines is split into sequential chunks of at
+    most max_lines lines, each shown for a proportional slice of the cue's
+    time window — the full text is always visible, never cut with '…'.
+    """
     text = _strip_inline_tags(cue.text).replace("\n", " ")
-    lines, truncated = wrap_text(text, max_units, max_lines)
-    return WrappedCue(cue_index=cue.index, lines=lines, truncated=truncated)
+    lines = _wrap_lines(text, max_units)
+    chunks = [lines[i : i + max_lines] for i in range(0, len(lines), max_lines)]
+    return _split_cue_timing(cue, chunks, duration_ms)
 
 
-def _dialogue_line(cue: Cue, wrapped: WrappedCue, duration_ms: int) -> str:
-    end_ms = min(cue.end_ms, duration_ms)  # clamp cue end to video duration (PRD 6.2)
+def get_style_line(cfg: PlatformConfig, template: str) -> str:
+    templates = {
+        "default": (
+            f"Style: Caption,{config.FONT_NAME},{cfg.font_size},&H00FFFFFF,&H00FFFFFF,"
+            f"&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,{cfg.outline},{cfg.shadow},"
+            f"2,{cfg.margin_lr},{cfg.margin_lr},{cfg.margin_v},1\n"
+        ),
+        "karaoke": (
+            f"Style: Caption,{config.FONT_NAME},{cfg.font_size},&H0000FFFF,&H00FFFFFF,"
+            f"&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,{cfg.outline},{cfg.shadow},"
+            f"2,{cfg.margin_lr},{cfg.margin_lr},{cfg.margin_v},1\n"
+        ),
+        "pop": (
+            f"Style: Caption,{config.FONT_NAME},{cfg.font_size},&H003333FF,&H00FFFFFF,"
+            f"&H00FFFFFF,&H00000000,1,0,0,0,100,100,0,0,1,{cfg.outline},{cfg.shadow},"
+            f"2,{cfg.margin_lr},{cfg.margin_lr},{cfg.margin_v},1\n"
+        ),
+        "bold": (
+            f"Style: Caption,{config.FONT_NAME},{cfg.font_size},&H0000FF00,&H00FFFFFF,"
+            f"&H00000000,&H00000000,1,0,0,0,100,100,0,0,3,{cfg.outline},{cfg.shadow},"
+            f"2,{cfg.margin_lr},{cfg.margin_lr},{cfg.margin_v},1\n"
+        ),
+    }
+    return templates.get(template, templates["default"])
+
+
+def _dialogue_line(wrapped: WrappedCue, template: str = "default") -> str:
     text = "\\N".join(wrapped.lines)
     text = text.replace("{", "\\{").replace("}", "\\}")
+
+    if template == "karaoke":
+        words = text.split(" ")
+        total_chars = sum(len(w) for w in words)
+        duration_cs = max(0, (wrapped.end_ms - wrapped.start_ms) // 10)
+        
+        karaoke_text = []
+        for word in words:
+            word_dur = (len(word) * duration_cs) // total_chars if total_chars else 0
+            karaoke_text.append(f"{{\\k{word_dur}}}{word}")
+        text = " ".join(karaoke_text)
+
     return (
-        f"Dialogue: 0,{ms_to_ass_time(cue.start_ms)},{ms_to_ass_time(end_ms)},"
+        f"Dialogue: 0,{ms_to_ass_time(wrapped.start_ms)},{ms_to_ass_time(wrapped.end_ms)},"
         f"Caption,,0,0,0,,{text}"
     )
 
 
 def build_ass(
-    cfg: PlatformConfig, cues: list[Cue], duration_s: float
+    cfg: PlatformConfig, cues: list[Cue], duration_s: float, template: str = "default"
 ) -> tuple[str, list[WrappedCue]]:
     """Generate the full ASS document for one platform (PRD 6.2).
 
     Returns (ass_text, wrapped_cues) — wrapped cues feed the verifier.
+    Long cues are split into sequential timed dialogues so no caption text
+    is ever truncated with '…'.
     """
     max_units = max_line_units(cfg)
     duration_ms = int(duration_s * 1000)
-    wrapped = [wrap_cue(cue, max_units, cfg.max_lines) for cue in cues]
+    wrapped: list[WrappedCue] = []
+    for cue in cues:
+        wrapped.extend(wrap_cue(cue, max_units, cfg.max_lines, duration_ms))
 
     header = (
         "[Script Info]\n"
@@ -292,14 +396,10 @@ def build_ass(
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
         "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
         "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        f"Style: Caption,{config.FONT_NAME},{cfg.font_size},&H00FFFFFF,&H00FFFFFF,"
-        f"&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,{cfg.outline},{cfg.shadow},"
-        f"2,{cfg.margin_lr},{cfg.margin_lr},{cfg.margin_v},1\n"
+        f"{get_style_line(cfg, template)}"
         "\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
-    dialogues = "\n".join(
-        _dialogue_line(cue, w, duration_ms) for cue, w in zip(cues, wrapped)
-    )
+    dialogues = "\n".join(_dialogue_line(w, template) for w in wrapped)
     return header + dialogues + "\n", wrapped

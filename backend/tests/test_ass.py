@@ -69,6 +69,52 @@ def test_truncation_with_ellipsis() -> None:
     assert lines[-1].endswith("…")
 
 
+def test_long_cue_split_into_chunks_no_truncation() -> None:
+    """Auto-transcribed long cues split into sequential dialogues — never '…'."""
+    text = (
+        "So today we're going to show you how to edit your videos for "
+        "TikTok and Instagram Reels in just a few minutes with no experience needed"
+    )
+    cue = Cue(start_ms=0, end_ms=8000, lines=[text], index=1)
+    ass_text, wrapped = build_ass(load_platforms()["tiktok"], [cue], 30.0)
+
+    assert len(wrapped) > 1  # split, not truncated
+    assert "…" not in ass_text
+    for word in text.split():  # every word survives
+        assert word in ass_text
+    for w in wrapped:
+        assert w.line_count <= 3  # each chunk fits the platform line cap
+
+    # chunks partition the cue's time window, non-overlapping, gap-free,
+    # and every chunk gets positive screen time
+    assert wrapped[0].start_ms == 0
+    assert wrapped[-1].end_ms == 8000
+    for prev, cur in zip(wrapped, wrapped[1:]):
+        assert prev.end_ms == cur.start_ms
+        assert prev.start_ms < prev.end_ms
+    assert wrapped[-1].start_ms < wrapped[-1].end_ms
+
+
+def test_split_chunks_keep_all_words_with_two_line_chunks() -> None:
+    """A cue that wraps past max_lines still shows its final words."""
+    text = (
+        "alpha beta gamma delta epsilon zeta eta theta iota kappa "
+        "lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega"
+    )
+    cue = Cue(start_ms=500, end_ms=6500, lines=[text], index=1)
+    ass_text, _ = build_ass(load_platforms()["reels"], [cue], 30.0)
+    assert "omega" in ass_text  # last word must not be cut
+    assert "…" not in ass_text
+
+
+def test_short_cue_stays_single_timed_dialogue() -> None:
+    """Short cues keep one dialogue with their exact original timing."""
+    _, wrapped = build_ass(load_platforms()["tiktok"], [CUE], 30.0)
+    assert len(wrapped) == 1
+    assert wrapped[0].start_ms == 1000
+    assert wrapped[0].end_ms == 2500
+
+
 def test_cue_end_clamped_to_duration() -> None:
     cue = Cue(start_ms=0, end_ms=5000, lines=["x"], index=1)
     text = _ass_for("tiktok", [cue], duration_s=2.0)

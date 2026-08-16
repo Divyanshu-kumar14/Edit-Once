@@ -37,6 +37,7 @@ class VersionState(BaseModel):
     # manual crop anchor overriding the face/center anchor (FR-4.3).
     fit: Literal["crop", "blur"] = "crop"
     anchor_override: tuple[float, float] | None = None  # normalized 0..1
+    caption_template: Literal["default", "karaoke", "pop", "bold"] = "default"
 
 
 class VersionOptions(BaseModel):
@@ -44,6 +45,7 @@ class VersionOptions(BaseModel):
 
     fit: Literal["crop", "blur"] = "crop"
     anchor: tuple[float, float] | None = None  # normalized 0..1
+    caption_template: Literal["default", "karaoke", "pop", "bold"] = "default"
 
 
 class InputInfo(BaseModel):

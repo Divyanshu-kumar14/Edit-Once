@@ -106,6 +106,7 @@ class JobManager:
         platform: str,
         fit: str,
         anchor: tuple[float, float] | None,
+        caption_template: str = "default",
     ) -> JobState | None:
         """Apply per-version options and re-render ONLY that platform (FR-4.3).
 
@@ -117,6 +118,7 @@ class JobManager:
             return None
         version = state.versions[platform]
         version.fit = fit
+        version.caption_template = caption_template
         # Clamp to 0..1: drag coordinates can drift a pixel outside.
         if anchor is not None:
             anchor = (min(1.0, max(0.0, anchor[0])), min(1.0, max(0.0, anchor[1])))
@@ -349,7 +351,7 @@ class JobManager:
 
         try:
             cfg = rules.load_platforms()[platform]
-            ass_text, wrapped = ass.build_ass(cfg, cues, info.duration_s)
+            ass_text, wrapped = ass.build_ass(cfg, cues, info.duration_s, getattr(version, "caption_template", "default"))
             job_dir = self.job_path(job_id)
             ass_path = job_dir / f"{platform}.ass"
             ass_path.write_text(ass_text)
