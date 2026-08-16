@@ -89,9 +89,9 @@ flowchart LR
 - **Backend** — Python 3.11+ / FastAPI, ffmpeg (libass) + OpenCV as subprocesses, no
   database; fully offline by default — the optional Groq key is the only external API.
 - **Frontend** — Vite + React + TypeScript, dark aurora-glass design (hand-rolled design
-  tokens, Inter Variable, lucide icons), Framer Motion for state transitions — motion
-  signals state (progress, skeletons, modal), not presence; focus-trapped fullscreen 9:16
-  video modal, responsive 4-up results grid.
+  tokens, Plus Jakarta Sans variable font, lucide icons), Framer Motion for state
+  transitions — motion signals state (progress, skeletons, modal), not presence;
+  focus-trapped fullscreen 9:16 video modal, responsive 4-up results grid.
 - **Accessibility** — WCAG-AA contrast (secondary text ≈7.4:1), `aria-busy`/`role=alert`
   live regions, `:focus-visible` rings so keyboard focus never relies on color alone, and
   `prefers-reduced-motion` support that collapses all animations.
@@ -107,6 +107,16 @@ Key modules (clean boundaries, unit-tested):
 | `backend/app/pipeline/renderer.py` | ffmpeg command builder/runner (timeout, progress, stderr) |
 | `backend/app/pipeline/verifier.py` | resolution/ratio/captions_safe/audio/duration checks |
 | `backend/app/queue.py` | JobManager: queue, worker, state persistence |
+
+## Tech stack
+
+| Layer | Choice | Notes |
+|---|---|---|
+| Frontend | Vite + React 18 + TypeScript | Framer Motion (`motion`) for state-driven animation, lucide-react icons, OGL for the WebGL aurora background, Plus Jakarta Sans variable font |
+| Backend | Python 3.11+ / FastAPI + Uvicorn | Pydantic models; ffmpeg (libass) + OpenCV headless (Haar-cascade face detection) as subprocesses; no database — job state on disk |
+| Testing | pytest + httpx | 117 unit + API tests, deterministic offline fixture |
+| Transcription | faster-whisper (`base`) | Fully local CPU inference, no API keys; switch model via `EDITONCE_WHISPER_MODEL`. Upload an SRT to skip it entirely |
+| LLM (optional) | Groq — `llama-3.3-70b-versatile` | Powers per-platform SEO packs (title/description/hashtags) from the video's transcript; switch via `EDITONCE_GROQ_MODEL`. Only enabled with `EDITONCE_GROQ_API_KEY` |
 
 ## Run it
 
@@ -146,4 +156,4 @@ specifics (SRT errors name the line).
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Bundled font: Inter (SIL Open Font License).
+MIT — see [LICENSE](LICENSE). Bundled font: Plus Jakarta Sans (SIL Open Font License).
