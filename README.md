@@ -9,6 +9,11 @@ shows all four versions in a single-row results grid — play any preview fullsc
 download each MP4. Every version is verified against its platform spec before it's marked
 Ready; failed versions surface the renderer stderr instead.
 
+**Make captions yours.** Each rendered version has a caption-style selector — Default,
+Karaoke (word-by-word), Pop Red, or Bold Outline — re-rendered per platform through libass.
+Long caption cues are split into sequential timed chunks instead of truncated, so no text
+is ever silently dropped.
+
 **No SRT? No problem.** Captions are optional — upload a video alone and captions are
 transcribed locally from the audio (faster-whisper, no API keys); upload an SRT to keep
 full control. Either way, captions are re-rendered from an SRT file — never OCR'd.
@@ -21,6 +26,19 @@ field or as a full pack. Optional: set `EDITONCE_GROQ_API_KEY` in `.env` to enab
 **The product is a correctness guarantee, not an auto-clipper.** Captions are re-rendered
 from the SRT — never OCR'd. Automation by default; a manual crop-anchor override is the
 only human input (escape hatch, not the workflow).
+
+## Screenshots
+
+| Upload | Running | Results |
+|---|---|---|
+| ![Upload screen](screenshots/upload.png) | ![Job progress](screenshots/running.png) | ![Results grid](screenshots/results-top.png) |
+
+| Caption-aware upload | Full results (incl. SEO pack) | Fullscreen preview |
+|---|---|---|
+| ![Upload with parsed captions](screenshots/upload-with-captions.png) | ![Full results page](screenshots/results.png) | ![Fullscreen 9:16 preview modal](screenshots/preview-modal.png) |
+
+Screenshots captured from the app running its deterministic fixture (video + SRT, no
+external services).
 
 ## Why this exists
 
@@ -70,9 +88,10 @@ flowchart LR
 
 - **Backend** — Python 3.11+ / FastAPI, ffmpeg (libass) + OpenCV as subprocesses, no
   database; fully offline by default — the optional Groq key is the only external API.
-- **Frontend** — Vite + React + TypeScript, dark aurora-glass design (hand-rolled tokens,
-  Inter Variable, lucide icons), Framer Motion primitives (`Reveal`, `Stagger`, `Shine`),
-  skeleton loaders, fullscreen 9:16 video modal, responsive 4-up results grid.
+- **Frontend** — Vite + React + TypeScript, dark aurora-glass design (hand-rolled design
+  tokens, Inter Variable, lucide icons), Framer Motion for state transitions — motion
+  signals state (progress, skeletons, modal), not presence; focus-trapped fullscreen 9:16
+  video modal, responsive 4-up results grid.
 - **Accessibility** — WCAG-AA contrast (secondary text ≈7.4:1), `aria-busy`/`role=alert`
   live regions, `:focus-visible` rings so keyboard focus never relies on color alone, and
   `prefers-reduced-motion` support that collapses all animations.
@@ -83,7 +102,7 @@ Key modules (clean boundaries, unit-tested):
 
 | Module | Responsibility |
 |---|---|
-| `backend/app/pipeline/ass.py` | SRT/VTT parser (line-numbered errors) + per-platform ASS generator |
+| `backend/app/pipeline/ass.py` | SRT/VTT parser (line-numbered errors) + per-platform ASS generator (caption templates, long-cue splitting) |
 | `backend/app/pipeline/rules.py` | `platforms.json` loader + margin/crop/wrap math |
 | `backend/app/pipeline/renderer.py` | ffmpeg command builder/runner (timeout, progress, stderr) |
 | `backend/app/pipeline/verifier.py` | resolution/ratio/captions_safe/audio/duration checks |
@@ -101,7 +120,7 @@ For development: `cd frontend && npm run dev` (Vite on :5173, proxies /api → :
 ## Verify it
 
 ```bash
-cd backend && ../.venv/bin/pytest          # unit + API tests (113 tests)
+cd backend && ../.venv/bin/pytest          # unit + API tests (117 tests)
 cd frontend && npx tsc --noEmit && npm run build   # typecheck + production build
 ```
 
@@ -121,24 +140,9 @@ specifics (SRT errors name the line).
 |---|---|---|---|
 | resolution | exactly 1080×1920 | ≥ 720×1280 | below min |
 | ratio | ≈ 9:16 | — | off-ratio |
-| captions_safe | caption box inside platform safe rect | line truncated with "…" | box outside safe rect |
+| captions_safe | caption box inside platform safe rect | over-long single word truncated with "…" (multi-word cues are split into timed chunks) | box outside safe rect |
 | audio | stream present | — | no audio in source |
 | duration | ≤ platform limit | exceeds limit (shows number) | — |
-
-## Recent polish
-
-- **Memoized toolchain health** — the health endpoint used to spawn two subprocesses
-  (`ffmpeg -version`, `-filters`) per call; it's now cached with a 30 s TTL, making the
-  check O(1) after the first call. The binary's features can't change mid-process, so the
-  cache is always correct.
-- **O(n) caption truncation** — the "…" ellipsis path previously re-scanned and re-copied
-  the line per dropped character (O(n²) worst case); it now tracks text width incrementally
-  in a single pass.
-- **Skeleton loaders for SEO packs** — 4 LLM calls take seconds; shimmering placeholder
-  cards hold the grid stable (zero layout shift) during first generation and regeneration.
-- **Keyboard-first controls** — crop-anchor dragging has a full keyboard equivalent
-  (arrows nudge 5%), modals close on Escape, and every copy/regenerate control gets a
-  visible `:focus-visible` ring.
 
 ## License
 
