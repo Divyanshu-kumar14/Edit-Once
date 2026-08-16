@@ -386,14 +386,19 @@ class JobManager:
                     "top": cfg.top_margin,
                 },
             )
-            version.download_url = f"/api/jobs/{state.job_id}/versions/{platform}"
+            # Cache-bust with the file mtime: re-renders rewrite these files in
+            # place, so the old URLs would let the browser keep showing the
+            # previous render's still/video (stale preview after a re-render).
+            version.download_url = (
+                f"/api/jobs/{state.job_id}/versions/{platform}?v={output_path.stat().st_mtime_ns}"
+            )
             # Stills are non-fatal (FR-6.1): a failure only leaves fewer previews.
             try:
                 still_paths = stills.extract_stills(
                     job_dir, platform, output.duration_s, [cue.start_ms for cue in cues]
                 )
                 version.stills = [
-                    f"/api/jobs/{state.job_id}/stills/{platform}/{i}"
+                    f"/api/jobs/{state.job_id}/stills/{platform}/{i}?v={still_paths[i].stat().st_mtime_ns}"
                     for i in range(len(still_paths))
                 ]
             except Exception:

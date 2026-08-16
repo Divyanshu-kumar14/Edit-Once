@@ -168,7 +168,7 @@ def get_job(job_id: str) -> JobState:
 def update_version_options(job_id: str, platform: str, body: VersionOptions) -> JobState:
     """Apply per-version fit/anchor and re-render that platform (FR-3.3, FR-4.3)."""
     state = manager.update_version_options(
-        job_id, platform, body.fit, body.anchor
+        job_id, platform, body.fit, body.anchor, body.caption_template
     )
     if state is None:
         raise HTTPException(status_code=404, detail="Job or platform not found")
@@ -191,7 +191,7 @@ def download_version(job_id: str, platform: str) -> FileResponse:
         path,
         media_type="video/mp4",
         filename=f"{job_id[:8]}_{platform}.mp4",
-        headers={"Content-Disposition": "attachment"},
+        headers={"Content-Disposition": "attachment", "Cache-Control": "no-cache"},
     )
 
 
@@ -279,7 +279,9 @@ def get_still(job_id: str, platform: str, n: int) -> FileResponse:
     path = manager.job_path(job_id) / "stills" / f"{platform}_{n}.jpg"
     if not path.exists():
         raise HTTPException(status_code=404, detail="Still not found")
-    return FileResponse(path, media_type="image/jpeg")
+    # no-cache: stills are regenerated in place on re-render; without this the
+    # browser serves the stale preview (same URL, heuristic caching).
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
 
 
 # Frontend build is served at / when present (mounted last so /api wins).
