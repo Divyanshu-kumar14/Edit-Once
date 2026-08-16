@@ -8,8 +8,6 @@ import { UploadDropzone } from "./components/UploadDropzone";
 import type { JobState, PlatformId, SeoPack, VersionOptions } from "./types";
 import { PLATFORM_LABELS, PLATFORM_ORDER } from "./types";
 import AuroraBackground from "./ui/AuroraBackground";
-import { Reveal } from "./ui/Reveal";
-import { Stagger } from "./ui/Stagger";
 
 type Screen = "upload" | "running" | "results";
 
@@ -102,22 +100,20 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <AuroraBackground />
       <header className="header">
-        <Reveal y={-10}>
-          <div className="header-inner">
-            <div className="brand">
-              <img src="/logo.jpg" alt="Edit Once Logo" className="brand-mark" />
-              <div>
-                <h1>Edit Once</h1>
-                <p className="tagline gradient-text">One edit. Four platform-perfect videos.</p>
-              </div>
+        <div className="header-inner">
+          <div className="brand">
+            <img src="/logo.jpg" alt="Edit Once Logo" className="brand-mark" />
+            <div>
+              <h1>Edit Once</h1>
+              <p className="tagline gradient-text">One edit. Four platform-perfect videos.</p>
             </div>
-            {screen !== "upload" && (
-              <button className="btn ghost" onClick={handleReset}>
-                <Upload size={14} aria-hidden="true" /> New project
-              </button>
-            )}
           </div>
-        </Reveal>
+          {screen !== "upload" && (
+            <button className="btn ghost" onClick={handleReset}>
+              <Upload size={14} aria-hidden="true" /> New project
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="app">
@@ -130,27 +126,28 @@ export default function App() {
 
         <main>
           {screen === "upload" && (
-            <Reveal>
-              <section className="hero">
-                <h1 className="hero-title">One edit. Four platforms. Zero re-editing.</h1>
-                <p className="muted hero-sub">
-                  Upload once — get platform-correct videos for TikTok, Reels, Shorts and X,
-                  with captions re-rendered into each platform's safe zone.
-                </p>
-                <div className="pills" aria-label="Output platforms">
-                  {PLATFORM_ORDER.map((pid) => (
-                    <span key={pid} className="pill" data-platform={pid}>
-                      <span className="plat-dot" aria-hidden="true" />
-                      {PLATFORM_LABELS[pid]}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            </Reveal>
+            <section className="hero">
+              <h1 className="hero-title">
+                One edit. Four platforms. <br />
+                <span className="gradient-text">Zero re-editing.</span>
+              </h1>
+              <p className="muted hero-sub">
+                Upload once — get platform-correct videos for TikTok, Reels, Shorts and X,
+                with captions re-rendered into each platform's safe zone.
+              </p>
+              <div className="pills" aria-label="Output platforms">
+                {PLATFORM_ORDER.map((pid) => (
+                  <span key={pid} className="pill" data-platform={pid}>
+                    <span className="plat-dot" aria-hidden="true" />
+                    {PLATFORM_LABELS[pid]}
+                  </span>
+                ))}
+              </div>
+            </section>
           )}
           {screen === "upload" && <UploadDropzone onSubmit={handleUpload} />}
           {screen === "upload" && (
-          <Stagger gap={0.12} className="how-it-works" aria-label="How it works">
+          <div className="how-it-works" aria-label="How it works">
             <div className="step">
               <span className="step-num" aria-hidden="true">1</span>
               <div>
@@ -172,7 +169,7 @@ export default function App() {
                 <p className="muted">Replay or download each one.</p>
               </div>
             </div>
-          </Stagger>
+          </div>
           )}
           {screen === "running" && job && <JobProgress job={job} />}
           {screen === "results" && job && (

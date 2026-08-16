@@ -3,7 +3,6 @@ import { Check, Copy, RefreshCw, Sparkles } from "lucide-react";
 import { ApiError, generateSeo } from "../api";
 import type { JobState, PlatformId, SeoPack } from "../types";
 import { PLATFORM_LABELS, PLATFORM_ORDER } from "../types";
-import { Reveal } from "../ui/Reveal";
 import { copy, useCopied } from "../ui/clipboard";
 
 interface Props {
@@ -109,6 +108,17 @@ function PackCard({
             rows={f.rows}
             defaultValue={f.value}
             aria-label={`${PLATFORM_LABELS[platform]} ${f.label}`}
+            ref={(el) => {
+              if (el) {
+                el.style.height = 'auto';
+                el.style.height = `${el.scrollHeight}px`;
+              }
+            }}
+            onInput={(e) => {
+              const target = e.currentTarget;
+              target.style.height = 'auto';
+              target.style.height = `${target.scrollHeight}px`;
+            }}
           />
         </label>
       ))}
@@ -155,10 +165,9 @@ export function SeoSection({ job, onPacks }: Props) {
   }, [job.job_id, onPacks]);
 
   return (
-    <Reveal>
-      <section
-        className="seo-section"
-        aria-label="SEO packs"
+    <section
+      className="seo-section"
+      aria-label="SEO packs"
         // aria-busy tells AT the section is mid-generation; the skeletons
         // below are aria-hidden so screen readers don't read shimmer noise.
         aria-busy={loading}
@@ -228,6 +237,5 @@ export function SeoSection({ job, onPacks }: Props) {
           </div>
         )}
       </section>
-    </Reveal>
   );
 }

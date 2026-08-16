@@ -1,25 +1,29 @@
 /* Design tokens — dark, video-first, projector-readable (FR-8.2). No purple. */
 :root {
-  --bg: #0b0e14;
-  --surface: #131722;
-  --surface-2: #1a2030;
+  --bg: #0A0F1C;
+  --surface: #101623;
+  --surface-2: #161D2D;
   --border: #232a3a;
   --text: #f2f4f8;
-  --muted: #9aa3b8;       /* raised from #8b93a7 for AA contrast on small text */
-  --accent: #ff6b35;      /* warm orange — video-first, not AI-purple */
-  --accent-soft: rgba(255, 107, 53, 0.14);
+  --muted: #a1a9bc;
+  --accent: #F97316;
+  --accent-soft: rgba(249, 115, 22, 0.14);
   --ok: #34d399;
   --warn: #fbbf24;
   --bad: #f87171;
-  --radius: 10px;
-  --font: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius-sm: 8px;   /* controls: buttons, selects, inputs, bars */
+  --radius: 12px;     /* surfaces: cards, panels, dropzone, steps */
+  --radius-lg: 16px;  /* dialogs and elevated overlays */
+  --font: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
 
-  /* Glass system (liquid-glass panels over the aurora). */
-  --glass-bg: rgba(19, 23, 34, 0.55);
-  --glass-bg-strong: rgba(19, 23, 34, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  /* Glass system — reserved for layered chrome (header, modal). Content
+     panels use stronger surfaces so text stays readable over the aurora
+     without heavy backdrop blur. */
+  --glass-bg: rgba(16, 22, 35, 0.72);
+  --glass-bg-strong: rgba(16, 22, 35, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.1);
   --glass-blur: 16px;
-  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 40%, transparent);
+  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02) 40%, transparent);
 
   /* Platform brand accents (user-approved; Reels purple is intentional). */
   --plat-tiktok: #25f4ee;
@@ -28,11 +32,10 @@
   --plat-shorts: #ff0033;
   --plat-x: #e7e9ea;
 
-  --shine: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.10) 50%, transparent 80%);
   --ease-spring: cubic-bezier(0.34, 1.15, 0.64, 1);
 
   /* Type scale (professional: outcome headlines, quiet labels). */
-  --fs-display: 30px;   /* hero headline, weight 600 */
+  --fs-display: 34px;   /* hero headline, weight 650, tight tracking */
   --fs-h2: 24px;        /* section headings, weight 650 (variable font interpolates) */
   --fs-h3: 16px;        /* card titles, weight 600 */
   --fs-body: 15px;
@@ -42,7 +45,7 @@
 * { box-sizing: border-box; }
 
 /* Visible keyboard focus for every interactive element (a11y). */
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
 
 /* Screen-reader-only content (alternative to display:none, which removes
    elements from the tab order — keyboard users couldn't reach the inputs). */
@@ -99,12 +102,14 @@ html, body {
 }
 
 /* --- glass utilities ------------------------------------------------------ */
+/* Content surface: translucent panel over the aurora. No backdrop blur —
+   blurring an animated canvas per-panel is expensive and, with the stronger
+   surface alpha, unnecessary. Blur stays on the header and modal only. */
 .glass {
   position: relative;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 .glass::before {
   content: "";
@@ -113,20 +118,13 @@ html, body {
   background: var(--glass-highlight);
   pointer-events: none;
 }
+/* Brand gradient — warm two-stop (film-grade highlight, no teal jump).
+   Teal stays in the ambient aurora only, like a cinematic color grade. */
 .gradient-text {
-  background: linear-gradient(100deg, #ff6b35, #ffb347 55%, #2dd4bf);
+  background: linear-gradient(100deg, #ff6b35 10%, #ffb347 90%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-}
-/* Light sweep that crosses a still/card once (position driven by Shine.tsx). */
-.shine-sweep {
-  position: absolute; top: 0; bottom: 0; left: 0;
-  width: 45%;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.12), transparent);
-  transform: skewX(-15deg);
-  pointer-events: none;
-  will-change: transform;
 }
 /* Small brand-color dot next to a platform name. */
 .plat-dot {
@@ -150,8 +148,8 @@ html, body {
   position: sticky; top: 0; z-index: 20;
   border-bottom: 1px solid var(--glass-border);
   margin-bottom: 28px;
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
   background: rgba(11, 14, 20, 0.55);
 }
 .header-inner {
@@ -164,14 +162,8 @@ html, body {
 .brand { display: flex; align-items: center; gap: 14px; }
 .brand-mark {
   width: 44px; height: 44px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
-  /* Soft "live" glow — pulses slowly, never blinks. */
-  animation: brand-pulse 3.4s ease-in-out infinite;
-}
-@keyframes brand-pulse {
-  0%, 100% { box-shadow: 0 0 12px rgba(255, 107, 53, 0.35); }
-  50% { box-shadow: 0 0 18px rgba(255, 107, 53, 0.55); }
 }
 .brand h1 { margin: 0; font-size: 22px; }
 .tagline { margin: 0; color: var(--muted); font-size: 14px; }
@@ -190,16 +182,16 @@ html, body {
 .btn {
   font: inherit; font-weight: 600; font-size: 15px;
   padding: 10px 18px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
   display: inline-flex; align-items: center; gap: 8px;
-  transition: filter 0.15s ease, background 0.15s ease;
+  transition: filter 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn.primary { background: var(--accent); color: #0b0e14; position: relative; overflow: hidden; }
-.btn.primary:hover:not(:disabled) { filter: brightness(1.1); }
+.btn.primary { background: var(--accent); color: #0b0e14; position: relative; overflow: hidden; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 8px var(--accent-soft); transition: filter 0.15s ease, background 0.15s ease, box-shadow 0.2s ease, transform 0.15s ease; }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.1); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 16px var(--accent-soft); }
 /* Shine sweep across primary buttons on hover. */
 .btn.primary::after {
   content: "";
@@ -211,16 +203,16 @@ html, body {
   pointer-events: none;
 }
 .btn.primary:hover:not(:disabled)::after { left: 130%; }
-.btn.ghost { background: transparent; color: var(--text); border-color: var(--border); }
-.btn.ghost:hover { background: var(--surface-2); }
+.btn.ghost { background: transparent; color: var(--text); border-color: var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+.btn.ghost:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); }
 .btn.tiny { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
 /* Press feedback micro-interaction. */
-.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
 
 /* --- dropzone ------------------------------------------------------------ */
 .dropzone {
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: var(--radius);
   padding: 48px 32px;
   text-align: center;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.2s ease, transform 0.2s var(--ease-spring);
@@ -228,9 +220,9 @@ html, body {
 /* Drag-over: accent border + glow + a slight lift so the drop feels magnetic. */
 .dropzone.dragging {
   border-color: var(--accent);
-  background: rgba(255, 107, 53, 0.08);
-  box-shadow: 0 0 0 1px rgba(255, 107, 53, 0.4), 0 16px 48px -16px rgba(255, 107, 53, 0.4);
-  transform: scale(1.01);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.4), 0 16px 48px -16px rgba(249, 115, 22, 0.4);
+  transform: scale(1.02);
 }
 .dropzone h2 { margin: 0 0 8px; font-size: var(--fs-h2); font-weight: 650; }
 .muted { color: var(--muted); }
@@ -240,8 +232,6 @@ html, body {
 .file-pick {
   display: flex; flex-direction: column; gap: 6px;
   background: var(--glass-bg-strong);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 14px 20px;
@@ -252,15 +242,13 @@ html, body {
 }
 .file-pick:hover { transform: translateY(-2px); border-color: var(--accent); }
 .file-label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; letter-spacing: 0.4px; }
-.label-caps { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.label-caps { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
 .file-name { font-size: 13px; color: var(--accent); word-break: break-all; }
 .file-pick .muted { font-size: 13px; margin: 0; }
 
 .parse-preview {
   display: flex; gap: 12px; align-items: baseline; justify-content: center;
   background: var(--glass-bg-strong);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 10px 16px;
@@ -274,7 +262,7 @@ html, body {
   background: rgba(248, 113, 113, 0.12);
   border: 1px solid var(--bad);
   color: #fecaca;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin-bottom: 20px;
   font-size: 14px;
@@ -285,7 +273,7 @@ html, body {
 
 /* --- upload hero + how-it-works ------------------------------------------- */
 .hero { max-width: 720px; margin: 44px auto 28px; text-align: center; }
-.hero-title { margin: 0 0 10px; font-size: var(--fs-display); font-weight: 600; }
+.hero-title { margin: 0 0 10px; font-size: var(--fs-display); font-weight: 650; letter-spacing: -0.02em; }
 .hero-sub { margin: 0 auto 18px; max-width: 560px; }
 .pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .pill {
@@ -309,7 +297,7 @@ html, body {
   height: 100%;
   display: flex; gap: 12px; align-items: flex-start;
   background: var(--glass-bg); border: 1px solid var(--glass-border);
-  border-radius: 14px; padding: 16px;
+  border-radius: var(--radius); padding: 16px;
 }
 .how-it-works .step h3 { margin: 0 0 4px; font-size: var(--fs-h3); }
 .how-it-works .step p { margin: 0; font-size: 13px; }
@@ -325,7 +313,7 @@ html, body {
   position: relative;
   overflow: hidden;
   background: var(--surface-2);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .skeleton::after {
   content: "";
@@ -345,6 +333,16 @@ html, body {
 /* The actively-rendering platform gets a soft glow — calm, not frantic. */
 .progress-row.active .bar { box-shadow: 0 0 14px rgba(255, 107, 53, 0.25); }
 .progress-name { width: 150px; font-weight: 600; font-size: 14px; }
+/* Percentage readout — tabular figures stop the digits jittering while
+   the bar animates (used on card re-render progress). */
+.pct {
+  min-width: 42px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 .bar { flex: 1; height: 14px; background: var(--surface-2); border-radius: 7px; overflow: hidden; }
 .bar-fill {
   height: 100%;
@@ -371,7 +369,7 @@ html, body {
 /* --- badges --------------------------------------------------------------- */
 .badge {
   font-size: 11px; font-weight: 800; letter-spacing: 0.6px;
-  padding: 3px 8px; border-radius: 5px;
+  padding: 3px 8px; border-radius: 6px;
   text-transform: uppercase;
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -397,15 +395,14 @@ html, body {
 .grid > div > .card { flex: 1; }
 .card {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
   padding: 16px;
   display: flex; flex-direction: column; gap: 12px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.2s var(--ease-spring), border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s ease, box-shadow 0.2s ease;
 }
 /* Top-edge light, same treatment as every glass panel. */
 .card::before {
@@ -421,9 +418,9 @@ html, body {
 .card[data-platform="shorts"] { --plat: var(--plat-shorts); }
 .card[data-platform="x"] { --plat: var(--plat-x); }
 .card:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--plat, var(--accent)) 45%, var(--glass-border));
-  box-shadow: 0 16px 48px -16px color-mix(in srgb, var(--plat, var(--accent)) 28%, transparent);
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--plat, var(--accent)) 40%, rgba(255,255,255,0.12));
+  box-shadow: 0 20px 48px -12px color-mix(in srgb, var(--plat, var(--accent)) 35%, rgba(0,0,0,0.6)), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 .card-head { display: flex; align-items: center; justify-content: space-between; position: relative; }
 .card-head h3 { margin: 0; font-size: var(--fs-h3); font-weight: 600; display: flex; align-items: center; gap: 8px; }
@@ -443,7 +440,7 @@ html, body {
 
 /* --- stills ---------------------------------------------------------------- */
 .still-wrap { position: relative; }
-.still-frame { position: relative; border-radius: 8px; overflow: hidden; }
+.still-frame { position: relative; border-radius: var(--radius-sm); overflow: hidden; }
 .still-skeleton { position: absolute; inset: 0; aspect-ratio: 9 / 16; }
 .still {
   width: 100%;
@@ -458,6 +455,18 @@ html, body {
 .still:hover { filter: brightness(1.1); }
 /* FR-4.3: draggable crop anchor on the preview. */
 .still-frame.draggable { cursor: crosshair; touch-action: none; user-select: none; }
+.still-frame.draggable::before {
+  content: "Drag to set anchor";
+  position: absolute;
+  bottom: 12px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.65); color: #fff;
+  padding: 4px 10px; border-radius: 6px; font-size: 11px;
+  pointer-events: none; opacity: 0; transition: opacity 0.2s ease;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.still-frame.draggable:hover::before { opacity: 1; }
 /* Keyboard users can nudge the anchor too — show focus on the still. */
 .still:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .anchor-marker {
@@ -488,17 +497,89 @@ html, body {
 /* Re-render in flight: progress replaces the still. */
 .card-render { display: flex; flex-direction: column; gap: 12px; }
 .card-render .still-skeleton { position: static; }
-.no-still { padding: 40px 0; text-align: center; border: 1px dashed var(--border); border-radius: 8px; }
+.no-still { padding: 40px 0; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
 
 /* --- card footer ------------------------------------------------------------- */
-.card-foot { display: flex; gap: 10px; margin-top: auto; }
+.card-foot {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-settings {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  margin-bottom: -4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.style-select {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+  flex: 1;
+}
+.style-select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: #1b2334;
+}
+.style-select:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+/* Native select popup inherits the dark scheme in supporting browsers. */
+.style-select option {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* --- fit mode toggle (segmented control) ------------------------------------ */
+.fit-toggle {
+  display: flex;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.fit-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.fit-btn:hover:not(.active) {
+  color: #d1d5db;
+}
+.fit-btn.active {
+  background: var(--surface-2);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
 
 /* --- modal ------------------------------------------------------------------- */
 .modal {
   position: fixed; inset: 0;
   background: rgba(8, 10, 15, 0.72);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   display: grid; place-items: center;
   z-index: 50;
   padding: 24px;
@@ -509,7 +590,7 @@ html, body {
   width: min(92vw, 460px);
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 14px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
 }
@@ -519,7 +600,7 @@ html, body {
   width: auto; height: auto;
   max-width: min(92vw, 460px);
   max-height: calc(80vh - 130px);
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   background: #000;
 }
 
@@ -545,7 +626,10 @@ html, body {
   .hero { margin: 28px auto 20px; }
   .how-it-works { grid-template-columns: 1fr; }
   .dropzone { padding: 32px 16px; }
-  .grid { grid-template-columns: 1fr; }
+  /* Single-column results: cap the 9:16 cards so a still never balloons to
+     near full viewport height on a phone. */
+  .grid { grid-template-columns: 1fr; justify-items: center; }
+  .grid > div { width: 100%; max-width: 440px; }
 }
 /* AI caption transcription phase (progress screen) */
 .progress-row.caption-row {
@@ -679,7 +763,7 @@ html, body {
   resize: vertical;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: inherit;
   font: inherit;
   font-size: 13px;

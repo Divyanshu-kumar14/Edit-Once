@@ -1,7 +1,5 @@
 import { useCallback, useState } from "react";
 import { Film, Captions } from "lucide-react";
-import { CountUp } from "../ui/CountUp";
-import { Reveal } from "../ui/Reveal";
 
 interface Props {
   onSubmit: (video: File, srt: File | null) => void;
@@ -56,14 +54,13 @@ export function UploadDropzone({ onSubmit }: Props) {
   const canSubmit = video !== null;
 
   return (
-    <Reveal>
-      <section
-        className={`dropzone glass ${dragging ? "dragging" : ""}`}
-        aria-label="Upload area: drop or pick an MP4 video (captions optional)"
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); handleDrop(e.dataTransfer.files); }}
-      >
+    <section
+      className={`dropzone glass ${dragging ? "dragging" : ""}`}
+      aria-label="Upload area: drop or pick an MP4 video (captions optional)"
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); handleDrop(e.dataTransfer.files); }}
+    >
       <h2>Upload your video — captions optional</h2>
       <p className="muted">
         Drop an MP4 (and a caption file if you have one). No SRT? We transcribe your captions automatically.
@@ -109,7 +106,7 @@ export function UploadDropzone({ onSubmit }: Props) {
       {!parsing && preview && (
         <div className="parse-preview" aria-live="polite">
           <strong>
-            <CountUp value={preview.count} /> caption cue{preview.count === 1 ? "" : "s"}
+            {preview.count} caption cue{preview.count === 1 ? "" : "s"}
           </strong>
           <span className="muted">{preview.preview}</span>
         </div>
@@ -123,7 +120,6 @@ export function UploadDropzone({ onSubmit }: Props) {
       >
         {canSubmit ? "Create 4 versions" : "Add a video to start"}
       </button>
-      </section>
-    </Reveal>
+    </section>
   );
 }
