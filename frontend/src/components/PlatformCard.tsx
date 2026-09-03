@@ -32,7 +32,7 @@ export function PlatformCard({ platform, version, onRerender }: Props) {
     >
       <header className="card-head">
         <h3>{label}</h3>
-        <span className={`status-pill ${version.status}`}>{STATUS_LABEL[version.status]}</span>
+        <span className={`badge ${version.status}`}>{STATUS_LABEL[version.status]}</span>
       </header>
 
       {version.status === "failed" ? (
