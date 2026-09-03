@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { X } from "lucide-react";
 import { PLATFORM_LABELS, PLATFORM_ORDER, STATUS_LABEL } from "../types";
 import type { JobState } from "../types";
@@ -83,7 +83,7 @@ export function JobProgress({ job, onCancel }: { job: JobState; onCancel: () => 
             aria-valuenow={job.transcribe_progress}
             aria-label="Caption transcription progress"
           >
-            <div className="bar-fill transcribing" style={{ width: `${job.transcribe_progress}%` }} />
+            <div className="bar-fill transcribing" style={{ "--p": job.transcribe_progress / 100 } as CSSProperties} />
           </div>
           <span className="badge transcribing">{job.transcribe_progress}%</span>
         </div>
@@ -109,7 +109,7 @@ export function JobProgress({ job, onCancel }: { job: JobState; onCancel: () => 
                   aria-valuenow={v.progress}
                   aria-label={`${PLATFORM_LABELS[pid]} render progress`}
                 >
-                  <div className={`bar-fill ${v.status}`} style={{ width: `${v.progress}%` }} />
+                  <div className={`bar-fill ${v.status}`} style={{ "--p": v.progress / 100 } as CSSProperties} />
                 </div>
               )}
               <span className={`badge ${v.status}`}>{label}</span>

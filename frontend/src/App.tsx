@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
-import { Upload } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { ApiError, pollJob, updateVersionOptions, uploadJob } from "./api";
 import { JobProgress } from "./components/JobProgress";
 import { ResultGrid } from "./components/ResultGrid";
@@ -118,7 +118,7 @@ export default function App() {
           </div>
           {screen !== "upload" && (
             <button className="btn ghost" onClick={handleReset}>
-              <Upload size={14} aria-hidden="true" /> New project
+              <RotateCcw size={14} aria-hidden="true" /> New project
             </button>
           )}
         </div>
