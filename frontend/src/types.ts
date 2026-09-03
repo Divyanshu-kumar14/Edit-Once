@@ -78,6 +78,15 @@ export interface JobState {
 export const PLATFORM_ORDER = ["tiktok", "reels", "shorts", "x"] as const;
 export type PlatformId = (typeof PLATFORM_ORDER)[number];
 
+/** Brand colors per platform — used for the safe-zone diagram and the card
+ *  hairline. Sourced from each platform's own identity, not the product palette. */
+export const PLATFORM_COLORS: Record<PlatformId, string> = {
+  tiktok: "#25F4EE",
+  reels: "#E1306C",
+  shorts: "#FF0033",
+  x: "#E7E9EA",
+};
+
 export const PLATFORM_LABELS: Record<PlatformId, string> = {
   tiktok: "TikTok",
   reels: "Instagram Reels",

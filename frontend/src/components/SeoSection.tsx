@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, Copy, RefreshCw, Sparkles } from "lucide-react";
+import { Check, Copy, PenLine, RefreshCw } from "lucide-react";
 import { ApiError, generateSeo } from "../api";
 import type { JobState, PlatformId, SeoPack } from "../types";
 import { PLATFORM_LABELS, PLATFORM_ORDER } from "../types";
@@ -23,7 +23,7 @@ function copyAllText(pack: SeoPack): string {
  */
 function PackSkeleton({ label }: { label: string }) {
   return (
-    <div className="seo-card glass" aria-hidden="true">
+    <div className="seo-card" aria-hidden="true">
       <div className="seo-card-head">
         <strong>{label}</strong>
         <span className="skeleton seo-skel-btn" />
@@ -49,7 +49,7 @@ function PackCard({
 }) {
   if (pack.error) {
     return (
-      <div className="seo-card glass" data-platform={platform}>
+      <div className="seo-card" data-platform={platform}>
         <div className="seo-card-head">
           <strong>{PLATFORM_LABELS[platform]}</strong>
           <span className="badge failed">Failed</span>
@@ -78,7 +78,7 @@ function PackCard({
   };
 
   return (
-    <div className="seo-card glass" data-platform={platform}>
+    <div className="seo-card" data-platform={platform}>
       <div className="seo-card-head">
         <strong>{PLATFORM_LABELS[platform]}</strong>
         <button
@@ -177,7 +177,7 @@ export function SeoSection({ job, onPacks }: Props) {
             <div className="seo-head">
               <div>
                 <h3>
-                  <Sparkles size={16} aria-hidden="true" /> SEO pack
+                  <PenLine size={16} aria-hidden="true" /> SEO pack
                 </h3>
                 <p className="muted">
                   Platform-optimized copy, grounded in your transcript. Tweak, copy, post.
@@ -206,16 +206,16 @@ export function SeoSection({ job, onPacks }: Props) {
             </div>
           </>
         ) : groqAvailable === false ? (
-          <div className="seo-cta glass">
+          <div className="seo-cta">
             <p className="muted">
               Want platform-optimized titles, descriptions and viral hashtags? Add a Groq API key
               (<code>EDITONCE_GROQ_API_KEY</code> in <code>.env</code>) and it appears here.
             </p>
           </div>
         ) : (
-          <div className="seo-cta glass">
+          <div className="seo-cta">
             <button className="btn primary" onClick={handleGenerate} disabled={loading}>
-              <Sparkles size={15} aria-hidden="true" />
+              <PenLine size={15} aria-hidden="true" />
               {loading ? "Asking Groq for 4 packs…" : "Generate SEO pack"}
             </button>
             <p className="muted">

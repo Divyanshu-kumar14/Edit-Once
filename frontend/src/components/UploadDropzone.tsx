@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Film, Captions } from "lucide-react";
+import { Captions, Check, Film, X } from "lucide-react";
 
 interface Props {
   onSubmit: (video: File, srt: File | null) => void;
@@ -55,7 +55,7 @@ export function UploadDropzone({ onSubmit }: Props) {
 
   return (
     <section
-      className={`dropzone glass ${dragging ? "dragging" : ""}`}
+      className={`dropzone ${dragging ? "dragging" : ""}`}
       aria-label="Upload area: drop or pick an MP4 video (captions optional)"
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
@@ -96,6 +96,16 @@ export function UploadDropzone({ onSubmit }: Props) {
           </span>
         </label>
       </div>
+
+      <p className="clean-note" aria-label="Your export must have no burned-in captions">
+        <span className="clean-chip clean-do">
+          <Check size={12} aria-hidden="true" /> Clean export
+        </span>
+        <span className="clean-chip clean-dont" aria-hidden="true">
+          <X size={12} aria-hidden="true" /> Burned-in captions get doubled
+        </span>
+        <span>Turn captions off in your editor before exporting — we re-render them into each platform&apos;s safe zone.</span>
+      </p>
 
       {parsing && (
         <div className="parse-preview" aria-live="polite">

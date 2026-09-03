@@ -1,9 +1,17 @@
+import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { PLATFORM_LABELS, PLATFORM_ORDER, STATUS_LABEL } from "../types";
 import type { JobState } from "../types";
 import { Reveal } from "../ui/Reveal";
 import { Stagger } from "../ui/Stagger";
 
-export function JobProgress({ job }: { job: JobState }) {
+function formatElapsed(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export function JobProgress({ job, onCancel }: { job: JobState; onCancel: () => void }) {
   const transcribing = job.status === "transcribing";
   const analyzing = job.status === "analyzing";
   const phase = transcribing
@@ -13,14 +21,56 @@ export function JobProgress({ job }: { job: JobState }) {
       : "Rendering your video…";
   const busy = transcribing || analyzing; // skeletons while pre-render stages run
 
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const tick = () => setElapsed(Math.floor((Date.now() - started) / 1000));
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const finished = PLATFORM_ORDER.filter((pid) => {
+    const s = job.versions[pid]?.status;
+    return s === "done" || s === "failed";
+  }).length;
+  const currentPid = PLATFORM_ORDER.find((pid) => job.versions[pid]?.status === "rendering")
+    ?? PLATFORM_ORDER.find((pid) => job.versions[pid]?.status === "queued");
+  const queueText =
+    !busy && currentPid
+      ? `Rendering ${PLATFORM_LABELS[currentPid]} · ${Math.min(finished + 1, 4)} of 4`
+      : null;
+
   return (
     <section className="progress" aria-live="polite">
       <Reveal>
-        <h2>{phase}</h2>
-        <p className="muted">
-          {job.input?.filename} · {(job.input?.duration_s ?? 0).toFixed(1)} s · one render at a
-          time — this takes a minute or two.
-        </p>
+        <div className="progress-head">
+          <div>
+            <h2>{phase}</h2>
+            <p className="muted">
+              {job.input?.filename} · {(job.input?.duration_s ?? 0).toFixed(1)} s · one render at a
+              time — this takes a minute or two.
+            </p>
+            {analyzing && (
+              <p className="muted">
+                Finding the subject in each scene so the 9:16 crop keeps them framed.
+              </p>
+            )}
+            {queueText && (
+              <p className="muted">
+                {queueText} · <span className="elapsed">elapsed {formatElapsed(elapsed)}</span>
+              </p>
+            )}
+            {!busy && !queueText && (
+              <p className="muted">
+                <span className="elapsed">Elapsed {formatElapsed(elapsed)}</span>
+              </p>
+            )}
+          </div>
+          <button className="btn ghost" onClick={onCancel} aria-label="Cancel and start over">
+            <X size={14} aria-hidden="true" /> Cancel
+          </button>
+        </div>
+        <p className="faint-note">Cancel stops watching here — the server finishes the current render.</p>
       </Reveal>
       {transcribing && (
         <div className="progress-row caption-row active" aria-live="polite">

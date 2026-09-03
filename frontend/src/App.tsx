@@ -6,8 +6,7 @@ import { JobProgress } from "./components/JobProgress";
 import { ResultGrid } from "./components/ResultGrid";
 import { UploadDropzone } from "./components/UploadDropzone";
 import type { JobState, PlatformId, SeoPack, VersionOptions } from "./types";
-import { PLATFORM_LABELS, PLATFORM_ORDER } from "./types";
-import AuroraBackground from "./ui/AuroraBackground";
+import { SafeZoneDiagram } from "./ui/SafeZoneDiagram";
 
 type Screen = "upload" | "running" | "results";
 
@@ -98,14 +97,13 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <AuroraBackground />
       <header className="header">
         <div className="header-inner">
           <div className="brand">
             <img src="/logo.jpg" alt="Edit Once Logo" className="brand-mark" />
             <div>
               <h1>Edit Once</h1>
-              <p className="tagline gradient-text">One edit. Four platform-perfect videos.</p>
+              <p className="tagline">One source edit · four platform-correct videos</p>
             </div>
           </div>
           {screen !== "upload" && (
@@ -117,7 +115,6 @@ export default function App() {
       </header>
 
       <div className="app">
-
         {error && (
           <div className="error-banner" role="alert">
             <strong>Error:</strong> {error}
@@ -126,52 +123,29 @@ export default function App() {
 
         <main>
           {screen === "upload" && (
-            <section className="hero">
-              <h1 className="hero-title">
-                One edit. Four platforms. <br />
-                <span className="gradient-text">Zero re-editing.</span>
-              </h1>
-              <p className="muted hero-sub">
-                Upload once — get platform-correct videos for TikTok, Reels, Shorts and X,
-                with captions re-rendered into each platform's safe zone.
-              </p>
-              <div className="pills" aria-label="Output platforms">
-                {PLATFORM_ORDER.map((pid) => (
-                  <span key={pid} className="pill" data-platform={pid}>
-                    <span className="plat-dot" aria-hidden="true" />
-                    {PLATFORM_LABELS[pid]}
-                  </span>
-                ))}
+            <section className="hero-split">
+              <div className="hero-copy">
+                <p className="eyebrow">Platform-correct video repacking</p>
+                <h1 className="hero-title">
+                  One edit. <span className="accent-text">Four platform-perfect exports.</span>
+                </h1>
+                <p className="lede">
+                  Upload a finished short. We re-render captions into each platform's safe
+                  zone, convert any ratio to 9:16, and verify every version against its spec
+                  before it's marked ready.
+                </p>
+                <UploadDropzone onSubmit={handleUpload} />
+                <p className="fineprint">
+                  <strong>No re-editing.</strong> Captions are re-rendered from your SRT, never
+                  OCR'd — transcribed locally on-device if you skip the file.
+                </p>
+              </div>
+              <div className="hero-visual">
+                <SafeZoneDiagram />
               </div>
             </section>
           )}
-          {screen === "upload" && <UploadDropzone onSubmit={handleUpload} />}
-          {screen === "upload" && (
-          <div className="how-it-works" aria-label="How it works">
-            <div className="step">
-              <span className="step-num" aria-hidden="true">1</span>
-              <div>
-                <h3>Upload</h3>
-                <p className="muted">One clean edit and its caption file.</p>
-              </div>
-            </div>
-            <div className="step">
-              <span className="step-num" aria-hidden="true">2</span>
-              <div>
-                <h3>We render</h3>
-                <p className="muted">Four platform-correct versions.</p>
-              </div>
-            </div>
-            <div className="step">
-              <span className="step-num" aria-hidden="true">3</span>
-              <div>
-                <h3>Export</h3>
-                <p className="muted">Replay or download each one.</p>
-              </div>
-            </div>
-          </div>
-          )}
-          {screen === "running" && job && <JobProgress job={job} />}
+          {screen === "running" && job && <JobProgress job={job} onCancel={handleReset} />}
           {screen === "results" && job && (
             <ResultGrid job={job} onRerender={handleRerender} onSeoPacks={handleSeoPacks} />
           )}
