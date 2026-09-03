@@ -386,13 +386,25 @@ body::before {
 .still { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 8px; cursor: pointer; display: block; background: var(--surface-2); transition: filter 0.18s ease; }
 .still:hover { filter: brightness(1.08); }
 .still:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.still-frame.draggable { cursor: crosshair; touch-action: none; user-select: none; }
-.still-frame.draggable::before {
-  content: "Drag to set anchor"; position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+.still-frame.armed { cursor: crosshair; touch-action: none; user-select: none; outline: 2px dashed var(--accent); outline-offset: -2px; }
+.still-frame.armed::before {
+  content: "Placing anchor"; position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
   background: rgba(0,0,0,0.7); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px;
-  pointer-events: none; opacity: 0; transition: opacity 0.2s ease; z-index: 10;
+  pointer-events: none; z-index: 10;
 }
-.still-frame.draggable:hover::before { opacity: 1; }
+/* Anchor mode bar: explicit entry, confirm/cancel — no hidden gesture. */
+.anchor-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; min-height: 32px; }
+.anchor-label { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.anchor-hint { font-size: 12px; color: var(--faint); }
+.anchor-move {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; padding: 8px 4px; min-height: 36px;
+  color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
+  border-radius: 6px; white-space: nowrap;
+}
+.anchor-move:hover { text-decoration: underline; }
+.anchor-actions { display: inline-flex; gap: 8px; margin-left: auto; }
+.anchor-btn { padding: 8px 14px; font-size: 13px; }
 .anchor-marker {
   position: absolute; width: 20px; height: 20px; transform: translate(-50%, -50%);
   pointer-events: none; border: 2px solid #fff; border-radius: 50%;
