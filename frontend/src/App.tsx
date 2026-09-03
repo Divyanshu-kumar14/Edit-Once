@@ -25,7 +25,9 @@ export default function App() {
       const terminal = await pollJob(jobId, setJob, abort.signal);
       setJob(terminal);
       if (terminal.status === "failed") {
-        setScreen(fromScreen === "running" ? "upload" : "results");
+        // Stay where the user was (progress rows or results grid) so the
+        // per-platform errors stay in context; the banner names recovery.
+        setScreen(fromScreen);
         setError(terminal.error ?? "Job failed — see platform errors below.");
       } else {
         setScreen("results");
@@ -34,8 +36,9 @@ export default function App() {
       if (abort.signal.aborted) return; // superseded by a newer poll
       const message =
         err instanceof ApiError ? err.message : "We couldn't reach the render server. Check your connection and try again.";
+      // Keep the current screen: a dropped poll must not discard the
+      // progress the user was watching. Retry re-polls the same job.
       setError(message);
-      setScreen("upload");
     } finally {
       abortRef.current = null;
     }
@@ -84,6 +87,13 @@ export default function App() {
     setScreen("upload");
   }, []);
 
+  /** Re-poll the same job after a dropped connection — never loses context. */
+  const retryPoll = useCallback(() => {
+    if (!job) return;
+    setError(null);
+    void startPolling(job.job_id, screen);
+  }, [job, screen, startPolling]);
+
   /** SEO packs are persisted server-side; merge them into app state so the
    * results screen shows them without a full re-poll. */
   const handleSeoPacks = useCallback(
@@ -117,7 +127,14 @@ export default function App() {
       <div className="app">
         {error && (
           <div className="error-banner" role="alert">
-            <strong>Error:</strong> {error}
+            <span>
+              <strong>Error:</strong> {error}
+            </span>
+            {job && screen !== "upload" && (
+              <button className="btn ghost tiny" onClick={retryPoll}>
+                Retry
+              </button>
+            )}
           </div>
         )}
 

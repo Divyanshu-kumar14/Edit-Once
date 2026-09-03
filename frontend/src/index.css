@@ -139,6 +139,7 @@ body::before {
   border-radius: var(--radius-sm);
   padding: 10px 14px; margin-bottom: 20px;
   font-size: 13.5px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
   animation: error-in 0.25s var(--ease-out);
 }
 @keyframes error-in { from { opacity: 0; transform: translateY(-6px); } }
